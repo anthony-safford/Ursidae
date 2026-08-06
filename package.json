@@ -29,7 +29,15 @@
 		"eslint-plugin-import": "^2.32.0",
 		"eslint-plugin-jsdoc": "^63.3.3",
 		"eslint-plugin-tsdoc": "^0.5.2",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.3.0",
 		"prettier": "^3.9.6",
 		"typescript": "^6.0.3"
+	},
+	"lint-staged": {
+		"src/**/*.ts": [
+			"eslint --fix",
+			"prettier --write"
+		]
 	}
 }
