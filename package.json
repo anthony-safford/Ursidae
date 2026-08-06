@@ -1,0 +1,28 @@
+{
+  "name": "urisdae",
+  "version": "1.0.0",
+  "description": "A collection of bearish tools.",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anthony-safford/Ursidae.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/anthony-safford/Ursidae/issues"
+  },
+  "homepage": "https://github.com/anthony-safford/Ursidae#readme",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.66.0",
+    "@typescript-eslint/parser": "^8.66.0",
+    "eslint": "^10.8.0",
+    "typescript": "^6.0.3"
+  }
+}
