@@ -22,11 +22,20 @@ const Configuration: UserConfig = {
 		],
 		'type-case': [RuleConfigSeverity.Error, 'always', 'lowercase'],
 		'type-empty': [RuleConfigSeverity.Error, 'never'],
+		'scope-empty': [RuleConfigSeverity.Error, 'never'],
+		'scope-required': [RuleConfigSeverity.Error, 'always'],
 		'scope-case': [RuleConfigSeverity.Error, 'always', 'lowercase'],
+		'scope-max-length': [RuleConfigSeverity.Error, 'always', 10],
+		'header-max-length': [RuleConfigSeverity.Error, 'always', 100],
 		'subject-case': [RuleConfigSeverity.Error, 'never', ['start-case', 'pascal-case', 'upper-case']],
 		'subject-empty': [RuleConfigSeverity.Error, 'never'],
 		'subject-full-stop': [RuleConfigSeverity.Error, 'never', '.'],
-		'header-max-length': [RuleConfigSeverity.Error, 'always', 100],
+	},
+	parserPreset: {
+		parserOpts: {
+			headerPattern: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert)\(#\d+\):/,
+			headerCorrespondence: ['type', 'scope'],
+		},
 	},
 };
 
