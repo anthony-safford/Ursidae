@@ -14,7 +14,7 @@
     "url": "git+https://github.com/anthony-safford/Ursidae.git"
   },
   "keywords": [],
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/anthony-safford/Ursidae/issues"
   },
@@ -23,6 +23,7 @@
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
     "eslint": "^10.8.0",
+    "eslint-plugin-import": "^2.32.0",
     "typescript": "^6.0.3"
   }
 }
