@@ -64,7 +64,8 @@ export default [
 					leadingUnderscore: 'allow',
 					trailingUnderscore: 'allow',
 					custom: {
-						regex: '^(is|has|should|can|get|set|do|find|fetch|create|update|delete|add|remove|check)',
+						regex:
+							'^(is|has|should|can|get|set|do|find|fetch|create|update|delete|add|remove|check)',
 						match: false,
 					},
 				},
@@ -72,7 +73,8 @@ export default [
 					selector: 'function',
 					format: ['camelCase'],
 					custom: {
-						regex: '^(is|has|should|can|get|set|do|find|fetch|create|update|delete|add|remove|check)',
+						regex:
+							'^(is|has|should|can|get|set|do|find|fetch|create|update|delete|add|remove|check)',
 						match: true,
 					},
 				},
