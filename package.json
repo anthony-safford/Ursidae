@@ -40,6 +40,9 @@
 		"src/**/*.ts": [
 			"eslint --fix",
 			"prettier --write"
+		],
+		"*.{json,mts,mjs}": [
+			"prettier --write"
 		]
 	}
 }
