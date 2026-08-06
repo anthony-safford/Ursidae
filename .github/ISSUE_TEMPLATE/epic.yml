@@ -1,0 +1,32 @@
+name: Epic
+description: A large body of work spanning multiple features or tasks
+title: "[Epic] "
+labels: ["type: epic"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is this epic about? What's the high-level goal?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What work is included in this epic? Broad outline of features/tasks.
+      placeholder: |
+        - Feature/task 1
+        - Feature/task 2
+        - Feature/task 3
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical Notes
+      description: Architecture decisions, technical constraints, or implementation strategy.
+    validations:
+      required: false

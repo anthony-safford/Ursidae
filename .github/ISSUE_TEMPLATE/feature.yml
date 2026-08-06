@@ -1,0 +1,31 @@
+name: Feature / Task
+description: A single, actionable piece of work
+title: "[Feature] "
+labels: ["type: feature"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What needs to be built or done?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How do you know this is done and correct?
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical Notes
+      description: Implementation notes, links, gotchas — anything future-you needs.
+    validations:
+      required: false
