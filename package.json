@@ -27,6 +27,8 @@
 		"eslint": "^10.8.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-import": "^2.32.0",
+		"eslint-plugin-jsdoc": "^63.3.3",
+		"eslint-plugin-tsdoc": "^0.5.2",
 		"prettier": "^3.9.6",
 		"typescript": "^6.0.3"
 	}

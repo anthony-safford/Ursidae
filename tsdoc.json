@@ -1,0 +1,20 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/tsdoc/v0/tsdoc.schema.json",
+    "extends": [
+        "tsdoc/base"
+    ],
+    "tagDefinitions": [
+        {
+            "tagName": "@example",
+            "syntaxKind": "block"
+        }
+    ],
+    "supportForTags": {
+        "@param": true,
+        "@returns": true,
+        "@throws": true,
+        "@example": true,
+        "@deprecated": true,
+        "@internal": true
+    }
+}
