@@ -1,6 +1,6 @@
 name: Epic
 description: A large body of work spanning multiple features or tasks
-title: "[Epic] "
+title: ""
 labels: ["type: epic"]
 body:
   - type: textarea
