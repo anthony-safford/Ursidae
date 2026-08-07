@@ -10,7 +10,7 @@ interface Props {
 /** Loading fallback component shown while tool is loading. */
 const LoadingFallback = (): React.ReactElement => {
 	return (
-		<div style={{ padding: '2rem' }}>
+		<div className="p-8">
 			<p>Loading...</p>
 		</div>
 	);
@@ -18,15 +18,15 @@ const LoadingFallback = (): React.ReactElement => {
 
 /** Tool page component that lazy-loads and renders the requested tool. */
 export const ToolPage = ({ name }: Props): React.ReactElement => {
-	const ToolComponent = toolRegistry[name];
+	const entry = toolRegistry[name];
 
-	if (!ToolComponent) {
+	if (!entry) {
 		return <NotFoundPage />;
 	}
 
 	return (
 		<Suspense fallback={<LoadingFallback />}>
-			<ToolComponent />
+			<entry.component />
 		</Suspense>
 	);
 };

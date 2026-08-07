@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 	public render(): React.ReactElement {
 		if (this.state.hasError) {
 			return (
-				<div style={{ padding: '2rem', color: 'red' }}>
+				<div className="p-8 text-red-600">
 					<h2>Something went wrong</h2>
 					<p>An error occurred while rendering this component.</p>
 				</div>
