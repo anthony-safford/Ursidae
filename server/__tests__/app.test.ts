@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../app';
+import type { FastifyBaseLogger } from 'fastify';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, '..', '..');
@@ -137,5 +138,35 @@ describe('server/app in production mode', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.payload).toContain('test');
+	});
+});
+
+describe('server/app with a custom logger', () => {
+	it('logs errors via request.log.error when a logger is provided', async () => {
+		const errorFn = vi.fn();
+		const fakeLoggerBase = {
+			level: 'info',
+			fatal: vi.fn(),
+			error: errorFn,
+			warn: vi.fn(),
+			info: vi.fn(),
+			debug: vi.fn(),
+			trace: vi.fn(),
+			silent: vi.fn(),
+		};
+		const fakeLogger = {
+			...fakeLoggerBase,
+			child: vi.fn(() => fakeLogger),
+		} as unknown as FastifyBaseLogger;
+
+		const app = createApp({ logger: fakeLogger });
+		app.get('/api/__test-logging-throws', () => {
+			throw new Error('logged boom');
+		});
+
+		const response = await app.inject({ method: 'GET', url: '/api/__test-logging-throws' });
+
+		expect(response.statusCode).toBe(500);
+		expect(errorFn).toHaveBeenCalled();
 	});
 });

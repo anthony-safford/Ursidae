@@ -9,6 +9,8 @@ const envSchema = z.object({
 	FRONTEND_PORT: z.coerce.number().int().positive().default(5173),
 	BACKEND_PORT: z.coerce.number().int().positive().default(3000),
 	DATA_DIR: z.string().min(1).default('./data'),
+	LOG_DIR: z.string().min(1).default('./logs'),
+	LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 /* eslint-enable @typescript-eslint/naming-convention */
 

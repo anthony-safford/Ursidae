@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { fastify, type FastifyInstance, type FastifyError } from 'fastify';
+import { fastify, type FastifyInstance, type FastifyError, type FastifyBaseLogger } from 'fastify';
 import fastifyStatic from '@fastify/static';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -30,13 +30,17 @@ function getCodeForStatus(statusCode: number): string {
 /**
  * Builds a configured Fastify application instance without starting it.
  *
+ * @param options - Optional configuration; `logger` supplies a pino/Fastify-compatible logger instance (omit to disable logging, e.g. in tests).
  * @returns A Fastify instance with routes, error handling, and (in production) static serving registered.
  */
-export function createApp(): FastifyInstance {
-	const app = fastify({ logger: false });
+export function createApp(options: { logger?: FastifyBaseLogger } = {}): FastifyInstance {
+	const app = options.logger
+		? fastify({ loggerInstance: options.logger })
+		: fastify({ logger: false });
 
 	app.setErrorHandler((error: FastifyError, req, reply) => {
 		const statusCode = error.statusCode ?? 500;
+		req.log.error(error);
 		const body: ErrorResponseBodyT = {
 			error: {
 				code: getCodeForStatus(statusCode),
