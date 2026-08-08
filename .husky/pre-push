@@ -1,0 +1,12 @@
+while read -r local_ref local_sha remote_ref remote_sha; do
+	[ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+
+	if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+		# new remote ref: lint everything not yet reachable from origin/main
+		from=$(git merge-base origin/main "$local_sha" 2>/dev/null || git rev-list --max-parents=0 "$local_sha")
+	else
+		from="$remote_sha"
+	fi
+
+	npx --no -- commitlint --from "$from" --to "$local_sha" || exit 1
+done
