@@ -30,5 +30,6 @@ replay_pid*
 node_modules/
 dist/
 coverage/
+.env
 *.tsbuildinfo
 npm-debug.log*
