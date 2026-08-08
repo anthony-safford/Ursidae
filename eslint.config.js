@@ -19,7 +19,7 @@ export default [
 			parserOptions: {
 				ecmaVersion: 2020,
 				sourceType: 'module',
-				project: './tsconfig.json',
+				project: './tsconfig.client.json',
 			},
 			globals: {
 				...globals.node,
@@ -119,7 +119,7 @@ export default [
 			parserOptions: {
 				ecmaVersion: 2020,
 				sourceType: 'module',
-				project: './tsconfig.json',
+				project: './tsconfig.server.json',
 			},
 			globals: {
 				...globals.node,
@@ -219,7 +219,7 @@ export default [
 			parserOptions: {
 				ecmaVersion: 2020,
 				sourceType: 'module',
-				project: './tsconfig.json',
+				project: './tsconfig.client.json',
 				ecmaFeatures: {
 					jsx: true,
 				},

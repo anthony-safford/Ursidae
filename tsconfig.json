@@ -1,18 +1,4 @@
 {
-	"compilerOptions": {
-		"target": "ES2020",
-		"module": "esnext",
-		"lib": ["ES2020", "DOM", "DOM.Iterable"],
-		"jsx": "react-jsx",
-		"outDir": "./dist",
-		"strict": true,
-		"esModuleInterop": true,
-		"skipLibCheck": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"moduleResolution": "bundler",
-		"types": ["vite/client", "vitest/globals", "node"]
-	},
-	"include": ["src/**/*", "server/**/*"],
-	"exclude": ["node_modules", "dist"]
+	"files": [],
+	"references": [{ "path": "./tsconfig.client.json" }, { "path": "./tsconfig.server.json" }]
 }
