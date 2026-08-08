@@ -31,6 +31,7 @@ node_modules/
 dist/
 coverage/
 logs/
+data/
 .env
 *.tsbuildinfo
 npm-debug.log*

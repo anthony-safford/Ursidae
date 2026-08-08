@@ -1,0 +1,43 @@
+{
+	"version": "6",
+	"dialect": "sqlite",
+	"id": "fe786dcd-edbc-4e5f-9f6b-9cb1b63dcac8",
+	"prevId": "00000000-0000-0000-0000-000000000000",
+	"tables": {
+		"example_counter": {
+			"name": "example_counter",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"count": {
+					"name": "count",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		}
+	},
+	"views": {},
+	"enums": {},
+	"_meta": {
+		"schemas": {},
+		"tables": {},
+		"columns": {}
+	},
+	"internal": {
+		"indexes": {}
+	}
+}

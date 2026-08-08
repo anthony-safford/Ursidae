@@ -24,3 +24,6 @@ Urisdae tools are standalone and plugin-encapsulated per ADR-0002 (Backend Stack
 - Schema changes require generating and committing Drizzle Kit migration files as part of the dev workflow, keeping schema code and the database in sync.
 - Backing up or resetting a single tool's data is a simple file-level operation (copying or deleting its `.db` file) without touching other tools.
 - The project is locked into Drizzle's schema and migration conventions across all tools going forward.
+- Each tool's Drizzle Kit config lives at `server/tools/<slug>/drizzle.config.ts` (one config file per tool, not one shared parameterized config), alongside `server/tools/<slug>/db/schema.ts` and `server/tools/<slug>/db/migrations/`.
+- Migrations are applied automatically at connection-creation time (via drizzle-orm's `migrate()` function running against the tool's migration folder) rather than via a manual `drizzle-kit migrate` CLI step — every time a tool's DB connection singleton is first created, pending migrations are applied.
+- Tests exercise the persistence layer using in-memory SQLite (`:memory:`) via a `filenameOverride` parameter on the shared connection factory, rather than temp files on disk.

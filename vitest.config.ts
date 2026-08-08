@@ -18,6 +18,7 @@ export default defineConfig({
 				'src/test/**',
 				'src/mocks/**',
 				'src/main.tsx',
+				'server/**/drizzle.config.ts',
 			],
 			thresholds: {
 				lines: 80,

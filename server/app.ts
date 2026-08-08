@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { fastify, type FastifyInstance, type FastifyError, type FastifyBaseLogger } from 'fastify';
 import fastifyStatic from '@fastify/static';
+import { exampleRoutes } from './tools/example/routes.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(currentDir, '..', 'dist');
@@ -71,6 +72,8 @@ export function createApp(options: { logger?: FastifyBaseLogger } = {}): Fastify
 	app.get('/api/health', () => {
 		return { status: 'ok' };
 	});
+
+	void app.register(exampleRoutes, { prefix: '/api/example' });
 
 	if (process.env.NODE_ENV === 'production') {
 		void app.register(fastifyStatic, {
