@@ -1,0 +1,17 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { env } from './server/config.ts';
+
+export default defineConfig({
+	plugins: [react(), tailwindcss()],
+	server: {
+		port: env.FRONTEND_PORT,
+		proxy: {
+			'/api': {
+				target: `http://localhost:${env.BACKEND_PORT}`,
+				changeOrigin: true,
+			},
+		},
+	},
+});
