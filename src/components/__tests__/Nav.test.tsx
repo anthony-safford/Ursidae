@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { Nav } from '../Nav';
 
 describe('Nav', () => {
-	it('renders a Home link and one link per registered tool', () => {
+	it('renders one breadcrumb link per registered tool', () => {
 		const { hook } = memoryLocation({ path: '/', static: true });
 
 		render(
@@ -14,7 +14,6 @@ describe('Nav', () => {
 			</Router>
 		);
 
-		expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Example' })).toBeInTheDocument();
 	});
 
@@ -27,7 +26,6 @@ describe('Nav', () => {
 			</Router>
 		);
 
-		expect(screen.getByRole('link', { name: 'Example' })).toHaveClass('text-blue-600');
-		expect(screen.getByRole('link', { name: 'Home' })).not.toHaveClass('text-blue-600');
+		expect(screen.getByRole('link', { name: 'Example' })).toHaveClass('text-accent');
 	});
 });

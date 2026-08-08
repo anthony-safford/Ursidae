@@ -17,7 +17,7 @@ describe('Layout', () => {
 		);
 
 		expect(screen.getByRole('heading', { name: 'Urisdae' })).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Urisdae' })).toBeInTheDocument();
 		expect(screen.getByText('page content')).toBeInTheDocument();
 	});
 });
