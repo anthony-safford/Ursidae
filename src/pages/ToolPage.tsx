@@ -10,8 +10,8 @@ interface Props {
 /** Loading fallback component shown while tool is loading. */
 const LoadingFallback = (): React.ReactElement => {
 	return (
-		<div className="p-8">
-			<p>Loading...</p>
+		<div className="p-lg">
+			<p className="text-text-muted">Loading...</p>
 		</div>
 	);
 };

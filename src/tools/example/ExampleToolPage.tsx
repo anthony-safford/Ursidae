@@ -35,21 +35,24 @@ export const ExampleToolPage = (): React.ReactElement => {
 	};
 
 	return (
-		<div className="p-8">
+		<div className="p-lg">
 			<h2 className="text-2xl font-bold">Example Tool</h2>
-			<p>This is an example tool demonstrating code-split routing and database integration.</p>
+			<p className="text-text-muted">
+				This is an example tool demonstrating code-split routing and database integration.
+			</p>
 
-			<div className="mt-6 flex flex-col items-start gap-4">
+			<div className="mt-lg flex flex-col items-start gap-md">
 				{count === undefined ? (
-					<p className="text-gray-600">Loading...</p>
+					<p className="text-text-muted">Loading...</p>
 				) : (
-					<p className="text-lg font-semibold">
-						Count: <span className="text-blue-600">{count}</span>
-					</p>
+					<div className="bg-surface border border-border rounded-brand p-md">
+						<p className="text-xs uppercase tracking-wide text-text-muted">Count:</p>
+						<p className="text-lg font-semibold text-accent">{count}</p>
+					</div>
 				)}
 				<button
 					onClick={handleIncrement}
-					className="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+					className="rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 					disabled={count === undefined}
 				>
 					Increment
