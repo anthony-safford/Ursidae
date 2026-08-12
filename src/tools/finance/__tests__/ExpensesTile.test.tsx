@@ -2,10 +2,21 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ExpensesTile } from '../ExpensesTile';
+import { FinanceFiltersProvider } from '../financeFiltersContext';
+
+/** Renders ExpensesTile inside the provider it requires, optionally with a non-default currency. */
+const renderExpensesTile = (
+	providerProps: { initialCurrency?: string } = {}
+): ReturnType<typeof render> =>
+	render(
+		<FinanceFiltersProvider {...providerProps}>
+			<ExpensesTile />
+		</FinanceFiltersProvider>
+	);
 
 describe('ExpensesTile', () => {
 	it('renders initial seeded rows with their dates, amounts, and locations', () => {
-		render(<ExpensesTile />);
+		renderExpensesTile();
 
 		// Check Trader Joe's row (ISO date format)
 		expect(screen.getByDisplayValue('2024-08-01')).toBeInTheDocument();
@@ -26,7 +37,7 @@ describe('ExpensesTile', () => {
 	describe('Amount input sanitization', () => {
 		it('sanitizes non-numeric characters from amount input', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const amountInputs = screen.getAllByPlaceholderText('0.00');
 			const firstAmountInput = amountInputs[0] as HTMLInputElement;
@@ -41,7 +52,7 @@ describe('ExpensesTile', () => {
 
 		it('keeps only the first decimal point in amount', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const amountInputs = screen.getAllByPlaceholderText('0.00');
 			const firstAmountInput = amountInputs[0] as HTMLInputElement;
@@ -54,7 +65,7 @@ describe('ExpensesTile', () => {
 
 		it('normalizes amount on blur: partial amounts are formatted to two decimal places', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const amountInputs = screen.getAllByPlaceholderText('0.00');
 			const firstAmountInput = amountInputs[0] as HTMLInputElement;
@@ -73,7 +84,7 @@ describe('ExpensesTile', () => {
 
 	describe('Native date input', () => {
 		it('allows setting and changing date via native <input type="date">', () => {
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const dateInputs = screen.getAllByDisplayValue(/2024-08/);
 			const firstDateInput = dateInputs[0] as HTMLInputElement;
@@ -89,7 +100,7 @@ describe('ExpensesTile', () => {
 	describe('Row deletion', () => {
 		it('clicking "Delete expense" row button removes that row from the table', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			expect(screen.getByDisplayValue("Trader Joe's")).toBeInTheDocument();
 
@@ -103,7 +114,7 @@ describe('ExpensesTile', () => {
 	describe('Column sorting', () => {
 		it('clicking a column header toggles sort ascending, then descending, then back to unsorted', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const dateHeader = screen.getByRole('button', { name: /date/i });
 
@@ -123,7 +134,7 @@ describe('ExpensesTile', () => {
 
 		it('clicking "Amount" header sorts rows by amount', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const amountHeader = screen.getByRole('button', { name: /amount/i });
 
@@ -146,7 +157,7 @@ describe('ExpensesTile', () => {
 
 		it('clicking "Location" header sorts rows by location', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const locationHeader = screen.getByRole('button', { name: /location/i });
 
@@ -171,7 +182,7 @@ describe('ExpensesTile', () => {
 	describe('Tag management', () => {
 		it('adding a tag: click "+ Tag", type a tag name, press Enter, asserts the tag pill appears', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			// Find the first row's tag section
 			const tagButtons = screen.getAllByText('+ Tag');
@@ -190,7 +201,7 @@ describe('ExpensesTile', () => {
 
 		it('clicking "Remove tag <name>" removes it', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			// First row already has 'Groceries' tag
 			const groceriesTag = screen.getByText('Groceries');
@@ -207,7 +218,7 @@ describe('ExpensesTile', () => {
 		});
 
 		it('the remove tag button is hidden by Tailwind CSS but queryable via getByLabelText before removal', () => {
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			// Button exists in DOM but is hidden with CSS 'hidden' class
 			const removeButton = screen.getByLabelText('Remove tag Groceries');
@@ -218,7 +229,7 @@ describe('ExpensesTile', () => {
 
 	describe('Quick-entry scoped to tile focus', () => {
 		it('typing a printable character key when focused inside the tile adds a new row seeded with that character in location field', () => {
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const initialLocationInputs = screen.getAllByPlaceholderText('Location');
 			const initialCount = initialLocationInputs.length;
@@ -241,7 +252,7 @@ describe('ExpensesTile', () => {
 		});
 
 		it('typing while focus is outside the tile component does NOT add a new row', () => {
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const initialLocationInputs = screen.getAllByPlaceholderText('Location');
 			const initialCount = initialLocationInputs.length;
@@ -256,7 +267,7 @@ describe('ExpensesTile', () => {
 
 		it('does not trigger quick-entry when typing into an already-focused input field', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const locationInputs = screen.getAllByPlaceholderText('Location');
 			const firstLocationInput = locationInputs[0] as HTMLInputElement;
@@ -276,7 +287,7 @@ describe('ExpensesTile', () => {
 		});
 
 		it('does not trigger quick-entry when a modifier key is held', () => {
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const initialLocationInputs = screen.getAllByPlaceholderText('Location');
 			const initialCount = initialLocationInputs.length;
@@ -295,7 +306,7 @@ describe('ExpensesTile', () => {
 	describe('Add expense button', () => {
 		it('clicking "+ Add expense" button adds a new empty row', async () => {
 			const user = userEvent.setup();
-			render(<ExpensesTile />);
+			renderExpensesTile();
 
 			const addButton = screen.getByRole('button', { name: /\+ Add expense/ });
 			const initialLocationInputs = screen.getAllByPlaceholderText('Location');
@@ -305,6 +316,23 @@ describe('ExpensesTile', () => {
 
 			const newLocationInputs = screen.getAllByPlaceholderText('Location');
 			expect(newLocationInputs.length).toBe(initialCount + 1);
+		});
+	});
+
+	describe('Currency conversion preview', () => {
+		it('shows no converted amount when the display currency matches the row currency (USD default)', () => {
+			renderExpensesTile();
+
+			expect(screen.queryByLabelText(/Converted to/)).not.toBeInTheDocument();
+		});
+
+		it('shows a converted amount alongside the raw input when the display currency differs', () => {
+			renderExpensesTile({ initialCurrency: 'EUR' });
+
+			const converted = screen.getAllByLabelText('Converted to EUR');
+			expect(converted.length).toBeGreaterThan(0);
+			// 54.20 USD * 0.92 EUR/USD = 49.86 EUR
+			expect(converted[0].textContent).toContain('49.86');
 		});
 	});
 });

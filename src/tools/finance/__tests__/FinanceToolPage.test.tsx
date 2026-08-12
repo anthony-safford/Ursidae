@@ -11,4 +11,10 @@ describe('FinanceToolPage', () => {
 		expect(screen.getByText('Assets')).toBeInTheDocument();
 		expect(screen.getByText('Liabilities')).toBeInTheDocument();
 	});
+
+	it('renders the currency swapper in the toolbar, defaulted to USD', () => {
+		render(<FinanceToolPage />);
+
+		expect(screen.getByLabelText('Display currency')).toHaveValue('USD');
+	});
 });

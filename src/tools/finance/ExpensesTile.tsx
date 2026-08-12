@@ -4,10 +4,13 @@ import {
 	createExpenseDraft,
 	DEFAULT_CURRENCY,
 	ExpenseDraftT,
+	formatCurrencyAmount,
 	formatMinorUnitsAsDecimalString,
 	normalizeTags,
 	parseAmountToMinorUnits,
 } from './expenseModel';
+import { convertMinorUnits } from './exchangeRates';
+import { useFinanceFilters } from './financeFiltersContext';
 
 /** Row in component state with currency tracking. */
 interface ExpenseRow extends ExpenseDraftT {
@@ -216,6 +219,7 @@ const RowTags = ({ tags, onAdd, onRemove }: RowTagsProps): React.ReactElement =>
 
 /** Expenses tile content — an editable amount/location/payment-type table with per-row tags. */
 export const ExpensesTile = (): React.ReactElement => {
+	const { currency: displayCurrency } = useFinanceFilters();
 	const [rows, dispatch] = useReducer(rowsReducer, INITIAL_ROWS);
 	const [focusTarget, setFocusTarget] = useState<{ rowId: string; field: 'date' | 'location' }>();
 	const [sort, setSort] = useState<SortState>();
@@ -302,104 +306,123 @@ export const ExpensesTile = (): React.ReactElement => {
 					</tr>
 				</thead>
 				<tbody>
-					{sortedRows.map((row) => (
-						<tr key={row.id} className="border-b border-border">
-							<td className="whitespace-nowrap py-xs pr-md">
-								<input
-									ref={(element) => {
-										fieldInputs.current[`${row.id}:date`] = element;
-									}}
-									type="date"
-									value={row.date}
-									onChange={(event) =>
-										dispatch({
-											type: 'update',
-											id: row.id,
-											patch: { date: event.target.value },
-										})
-									}
-									className="w-32 bg-transparent text-text outline-none"
-								/>
-							</td>
-							<td className="whitespace-nowrap py-xs pr-md">
-								<div className="flex items-center gap-xs">
-									<span className="text-text-muted">$</span>
+					{sortedRows.map((row) => {
+						const amountMinorUnits = parseAmountToMinorUnits(row.amountInput);
+						const convertedLabel =
+							amountMinorUnits !== undefined && row.currency !== displayCurrency
+								? formatCurrencyAmount(
+										convertMinorUnits(amountMinorUnits, row.currency, displayCurrency),
+										displayCurrency
+									)
+								: undefined;
+
+						return (
+							<tr key={row.id} className="border-b border-border">
+								<td className="whitespace-nowrap py-xs pr-md">
 									<input
-										value={row.amountInput}
-										onChange={(event) => {
-											const filtered = filterAmountInput(event.target.value);
+										ref={(element) => {
+											fieldInputs.current[`${row.id}:date`] = element;
+										}}
+										type="date"
+										value={row.date}
+										onChange={(event) =>
 											dispatch({
 												type: 'update',
 												id: row.id,
-												patch: { amountInput: filtered },
-											});
-										}}
-										onBlur={(event) => {
-											const parsed = parseAmountToMinorUnits(event.target.value);
-											if (parsed !== undefined) {
-												const formatted = formatMinorUnitsAsDecimalString(parsed);
+												patch: { date: event.target.value },
+											})
+										}
+										className="w-32 bg-transparent text-text outline-none"
+									/>
+								</td>
+								<td className="whitespace-nowrap py-xs pr-md">
+									<div className="flex items-center gap-xs">
+										<span className="text-text-muted">$</span>
+										<input
+											value={row.amountInput}
+											onChange={(event) => {
+												const filtered = filterAmountInput(event.target.value);
 												dispatch({
 													type: 'update',
 													id: row.id,
-													patch: { amountInput: formatted },
+													patch: { amountInput: filtered },
 												});
-											}
+											}}
+											onBlur={(event) => {
+												const parsed = parseAmountToMinorUnits(event.target.value);
+												if (parsed !== undefined) {
+													const formatted = formatMinorUnitsAsDecimalString(parsed);
+													dispatch({
+														type: 'update',
+														id: row.id,
+														patch: { amountInput: formatted },
+													});
+												}
+											}}
+											placeholder="0.00"
+											className="w-16 bg-transparent text-text outline-none"
+										/>
+										{convertedLabel && (
+											<span
+												className="whitespace-nowrap text-xs text-text-muted"
+												aria-label={`Converted to ${displayCurrency}`}
+											>
+												≈ {convertedLabel}
+											</span>
+										)}
+									</div>
+								</td>
+								<td className="whitespace-nowrap py-xs pr-md">
+									<input
+										ref={(element) => {
+											fieldInputs.current[`${row.id}:location`] = element;
 										}}
-										placeholder="0.00"
-										className="w-16 bg-transparent text-text outline-none"
+										value={row.location}
+										onChange={(event) =>
+											dispatch({
+												type: 'update',
+												id: row.id,
+												patch: { location: event.target.value },
+											})
+										}
+										placeholder="Location"
+										className="w-32 bg-transparent text-text-muted outline-none"
 									/>
-								</div>
-							</td>
-							<td className="whitespace-nowrap py-xs pr-md">
-								<input
-									ref={(element) => {
-										fieldInputs.current[`${row.id}:location`] = element;
-									}}
-									value={row.location}
-									onChange={(event) =>
-										dispatch({
-											type: 'update',
-											id: row.id,
-											patch: { location: event.target.value },
-										})
-									}
-									placeholder="Location"
-									className="w-32 bg-transparent text-text-muted outline-none"
-								/>
-							</td>
-							<td className="whitespace-nowrap py-xs pr-md">
-								<input
-									value={row.paymentType}
-									onChange={(event) =>
-										dispatch({
-											type: 'update',
-											id: row.id,
-											patch: { paymentType: event.target.value },
-										})
-									}
-									placeholder="Type"
-									className="w-24 bg-transparent text-text-muted outline-none"
-								/>
-							</td>
-							<td className="py-xs">
-								<RowTags
-									tags={row.tags}
-									onAdd={(tag) => dispatch({ type: 'addTag', id: row.id, tag })}
-									onRemove={(tag) => dispatch({ type: 'removeTag', id: row.id, tag })}
-								/>
-							</td>
-							<td className="whitespace-nowrap py-xs pl-sm">
-								<button
-									type="button"
-									onClick={() => dispatch({ type: 'remove', id: row.id })}
-									aria-label="Delete expense"
-									className="text-text-muted hover:text-danger transition-colors duration-200"
-								>
-									<Trash size={14} weight="bold" />
-								</button>
-							</td>
-						</tr>
-					))}
+								</td>
+								<td className="whitespace-nowrap py-xs pr-md">
+									<input
+										value={row.paymentType}
+										onChange={(event) =>
+											dispatch({
+												type: 'update',
+												id: row.id,
+												patch: { paymentType: event.target.value },
+											})
+										}
+										placeholder="Type"
+										className="w-24 bg-transparent text-text-muted outline-none"
+									/>
+								</td>
+								<td className="py-xs">
+									<RowTags
+										tags={row.tags}
+										onAdd={(tag) => dispatch({ type: 'addTag', id: row.id, tag })}
+										onRemove={(tag) => dispatch({ type: 'removeTag', id: row.id, tag })}
+									/>
+								</td>
+								<td className="whitespace-nowrap py-xs pl-sm">
+									<button
+										type="button"
+										onClick={() => dispatch({ type: 'remove', id: row.id })}
+										aria-label="Delete expense"
+										className="text-text-muted hover:text-danger transition-colors duration-200"
+									>
+										<Trash size={14} weight="bold" />
+									</button>
+								</td>
+							</tr>
+						);
+					})}
 				</tbody>
 			</table>
 			<button
