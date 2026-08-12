@@ -219,7 +219,7 @@ const RowTags = ({ tags, onAdd, onRemove }: RowTagsProps): React.ReactElement =>
 
 /** Expenses tile content — an editable amount/location/payment-type table with per-row tags. */
 export const ExpensesTile = (): React.ReactElement => {
-	const { currency: displayCurrency } = useFinanceFilters();
+	const { currency: displayCurrency, dateRange } = useFinanceFilters();
 	const [rows, dispatch] = useReducer(rowsReducer, INITIAL_ROWS);
 	const [focusTarget, setFocusTarget] = useState<{ rowId: string; field: 'date' | 'location' }>();
 	const [sort, setSort] = useState<SortState>();
@@ -265,12 +265,24 @@ export const ExpensesTile = (): React.ReactElement => {
 		});
 	};
 
+	// Rows with no date yet (still being drafted) are always shown, never hidden by the range.
+	const visibleRows = useMemo(() => {
+		if (!dateRange.start && !dateRange.end) return rows;
+
+		return rows.filter((row) => {
+			if (!row.date) return true;
+			if (dateRange.start && row.date < dateRange.start) return false;
+			if (dateRange.end && row.date > dateRange.end) return false;
+			return true;
+		});
+	}, [rows, dateRange]);
+
 	const sortedRows = useMemo(() => {
-		if (!sort) return rows;
+		if (!sort) return visibleRows;
 		const { key, direction } = sort;
 		const factor = direction === 'asc' ? 1 : -1;
 
-		return [...rows].sort((a, b) => {
+		return [...visibleRows].sort((a, b) => {
 			if (key === 'amount') {
 				const aVal = parseAmountToMinorUnits(a.amountInput) ?? 0;
 				const bVal = parseAmountToMinorUnits(b.amountInput) ?? 0;
@@ -278,7 +290,7 @@ export const ExpensesTile = (): React.ReactElement => {
 			}
 			return a[key].localeCompare(b[key]) * factor;
 		});
-	}, [rows, sort]);
+	}, [visibleRows, sort]);
 
 	return (
 		<div

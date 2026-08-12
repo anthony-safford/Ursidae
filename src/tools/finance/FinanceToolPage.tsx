@@ -1,15 +1,21 @@
 import React from 'react';
 import { TileGrid } from '../../components/TileGrid';
 import { CurrencySwapper } from '../../components/CurrencySwapper';
+import { GlobalDateFilter } from '../../components/GlobalDateFilter';
 import { ExpensesTile } from './ExpensesTile';
 import { FinanceFiltersProvider, useFinanceFilters } from './financeFiltersContext';
 import { CURRENCY_OPTIONS } from './exchangeRates';
 
 /** Global controls shared across every tile: currency, date range, etc. */
 const FinanceToolbar = (): React.ReactElement => {
-	const { currency, setCurrency } = useFinanceFilters();
+	const { currency, setCurrency, dateRange, setDateRange } = useFinanceFilters();
 
-	return <CurrencySwapper options={CURRENCY_OPTIONS} value={currency} onChange={setCurrency} />;
+	return (
+		<>
+			<CurrencySwapper options={CURRENCY_OPTIONS} value={currency} onChange={setCurrency} />
+			<GlobalDateFilter value={dateRange} onChange={setDateRange} />
+		</>
+	);
 };
 
 /** Placeholder tool page for the general finance tool. */

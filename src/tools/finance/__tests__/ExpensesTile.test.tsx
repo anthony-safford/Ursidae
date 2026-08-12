@@ -3,10 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ExpensesTile } from '../ExpensesTile';
 import { FinanceFiltersProvider } from '../financeFiltersContext';
+import type { DateRangeValue } from '../../../components/GlobalDateFilter';
 
-/** Renders ExpensesTile inside the provider it requires, optionally with a non-default currency. */
+/** Renders ExpensesTile inside the provider it requires, optionally with non-default filters. */
 const renderExpensesTile = (
-	providerProps: { initialCurrency?: string } = {}
+	providerProps: { initialCurrency?: string; initialDateRange?: DateRangeValue } = {}
 ): ReturnType<typeof render> =>
 	render(
 		<FinanceFiltersProvider {...providerProps}>
@@ -333,6 +334,43 @@ describe('ExpensesTile', () => {
 			expect(converted.length).toBeGreaterThan(0);
 			// 54.20 USD * 0.92 EUR/USD = 49.86 EUR
 			expect(converted[0].textContent).toContain('49.86');
+		});
+	});
+
+	describe('Date range filtering', () => {
+		it('shows all rows when no date range is set', () => {
+			renderExpensesTile();
+
+			expect(screen.getByDisplayValue("Trader Joe's")).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Metro Transit')).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Comcast')).toBeInTheDocument();
+		});
+
+		it('hides rows outside the selected date range', () => {
+			renderExpensesTile({ initialDateRange: { start: '2024-08-02', end: '2024-08-04' } });
+
+			expect(screen.queryByDisplayValue("Trader Joe's")).not.toBeInTheDocument();
+			expect(screen.getByDisplayValue('Metro Transit')).toBeInTheDocument();
+			expect(screen.queryByDisplayValue('Comcast')).not.toBeInTheDocument();
+		});
+
+		it('an open-ended range (only start) hides earlier rows but keeps later ones', () => {
+			renderExpensesTile({ initialDateRange: { start: '2024-08-03', end: null } });
+
+			expect(screen.queryByDisplayValue("Trader Joe's")).not.toBeInTheDocument();
+			expect(screen.getByDisplayValue('Metro Transit')).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Comcast')).toBeInTheDocument();
+		});
+
+		it('a newly added row with no date yet is never hidden by an active range', async () => {
+			const user = userEvent.setup();
+			renderExpensesTile({ initialDateRange: { start: '2024-08-02', end: '2024-08-04' } });
+
+			const initialCount = screen.getAllByPlaceholderText('Location').length;
+
+			await user.click(screen.getByRole('button', { name: /\+ Add expense/ }));
+
+			expect(screen.getAllByPlaceholderText('Location').length).toBe(initialCount + 1);
 		});
 	});
 });

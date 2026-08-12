@@ -17,4 +17,11 @@ describe('FinanceToolPage', () => {
 
 		expect(screen.getByLabelText('Display currency')).toHaveValue('USD');
 	});
+
+	it('renders the global date filter in the toolbar, defaulted to no range', () => {
+		render(<FinanceToolPage />);
+
+		expect(screen.getByLabelText('Filter from date')).toHaveValue('');
+		expect(screen.getByLabelText('Filter to date')).toHaveValue('');
+	});
 });
