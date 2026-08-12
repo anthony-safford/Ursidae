@@ -43,6 +43,41 @@ Before a commit is accepted:
 
 If your commit has a body (multi-line message), keep body lines under **100 characters** (enforced by `commitlint`'s `body-max-line-length` rule). Use bullet points or concise paragraphs.
 
+## Epic → Feature Workflow
+
+Epics and their feature issues are created from a single markdown plan file rather than by hand
+in the GitHub UI.
+
+1. **Write the plan:** copy `docs/epics/_template.md` to `docs/epics/<slug>.md`. The `# ` heading
+   becomes the epic issue; each `## ` heading becomes a feature issue nested under it as a native
+   GitHub sub-issue. An optional `<!-- slug: my-slug -->` comment sets the branch slug (otherwise
+   it's derived from the epic title).
+
+2. **Create the issues:**
+
+   ```bash
+   npm run epic:new -- docs/epics/<slug>.md
+   ```
+
+   Add `--dry-run` to preview the `gh` commands without creating anything. The script rewrites
+   the plan file in place, annotating each heading with its assigned issue number (e.g.
+   `## Add vitest #13`), so `feat(#N):` commit scopes are ready to copy.
+
+   Pass `--branch` to also create and push the `epic/<n>/<slug>` branch. It's off by default and
+   refuses to run from a dirty working tree or anywhere but `main`.
+
+3. **Work the epic:** commit to the epic branch as usual, scoping each commit to its feature
+   issue (`feat(#23): ...`). Pushing to `epic/**` automatically closes any `feature`-labeled issue
+   referenced by a landed commit.
+
+4. **Open the epic PR:** open a PR from the epic branch to `main`. Its body is auto-populated
+   between the `<!-- epic-summary:start -->`/`<!-- epic-summary:end -->` markers with the epic
+   header, a feature checklist, and a changelog grouped by commit type — regenerated on every
+   push. Anything written above the markers is preserved.
+
+**Prerequisite:** the `gh` CLI must be installed and authenticated (`gh auth status`). If a
+command fails with a missing-scope error, run `gh auth refresh -s <scope>`.
+
 ## Code Style & Formatting
 
 ### Prettier
@@ -312,6 +347,7 @@ server/tools/<tool-slug>/
 | `npm test`              | Run Vitest (single run, CI mode)                                           |
 | `npm run test:watch`    | Run Vitest in watch mode                                                   |
 | `npm run test:coverage` | Run Vitest with coverage report (enforces 80% thresholds)                  |
+| `npm run epic:new`      | Create an epic issue + feature sub-issues from a plan file (see above)     |
 
 ## Resources
 

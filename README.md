@@ -75,6 +75,7 @@ Key npm scripts:
 | `npm test`                          | Run test suite (single run)                                 |
 | `npm run test:watch`                | Run tests in watch mode                                     |
 | `npm run test:coverage`             | Run tests with coverage report (80% threshold)              |
+| `npm run epic:new -- <plan.md>`     | Scaffold an epic + feature issues from a markdown plan      |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for a complete list and details.
 

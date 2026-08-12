@@ -1,6 +1,6 @@
 name: Feature / Task
 description: A single, actionable piece of work
-labels: ["type: feature"]
+labels: ["feature"]
 body:
   - type: textarea
     id: description

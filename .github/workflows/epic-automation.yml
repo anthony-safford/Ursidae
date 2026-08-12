@@ -1,0 +1,51 @@
+name: Epic automation
+
+on:
+    push:
+        branches: ['epic/**']
+    pull_request:
+        types: [opened, synchronize, reopened]
+        branches: [main]
+    workflow_dispatch:
+        inputs:
+            ref:
+                description: Branch or SHA to run the close-features job against
+                required: false
+                type: string
+
+jobs:
+    close-features:
+        name: Close landed feature issues
+        if: github.event_name != 'pull_request'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.event.inputs.ref || github.ref }}
+            - run: node scripts/close-landed-issues.mjs
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+                  GITHUB_EVENT_AFTER: ${{ github.event.after }}
+
+    epic-pr-body:
+        name: Generate epic PR body
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'epic/')
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
+            issues: read
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - run: node scripts/epic-pr-body.mjs
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  HEAD_REF: ${{ github.head_ref }}

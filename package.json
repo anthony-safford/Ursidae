@@ -11,6 +11,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"db:generate:example": "drizzle-kit generate --config server/tools/example/drizzle.config.ts",
+		"epic:new": "node scripts/epic-new.mjs",
 		"lint": "eslint src server --ext .ts,.tsx",
 		"lint:fix": "eslint src server --ext .ts,.tsx --fix",
 		"format": "prettier --write src",
