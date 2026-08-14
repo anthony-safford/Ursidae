@@ -223,7 +223,7 @@ export const TileGrid = ({
 
 	return (
 		<div ref={gridContainerRef}>
-			<div className="flex justify-between items-center gap-sm pr-md mb-sm">
+			<div className="flex justify-between items-center gap-sm px-md mb-sm">
 				<div className="flex items-center gap-sm">{toolbarStart}</div>
 				<div className="flex items-center gap-sm">
 					<div className="relative">
