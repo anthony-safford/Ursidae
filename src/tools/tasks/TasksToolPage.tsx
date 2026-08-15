@@ -8,12 +8,13 @@ import type { TaskT } from './tasksModel';
 const NEW_TASK = Symbol('new-task');
 
 /**
- * Tasks tool page: a freeform canvas of persisted tasks, with create/edit/delete.
- * Sub-tasks and relationship links land in later features of this epic.
+ * Tasks tool page: a freeform canvas of persisted tasks, with create/edit/delete and sub-tasks.
+ * Relationship links land in a later feature of this epic.
  */
 export const TasksToolPage = (): React.ReactElement => {
 	const [tasks, setTasks] = useState<TaskT[] | undefined>();
 	const [editing, setEditing] = useState<TaskT | typeof NEW_TASK | undefined>();
+	const [newTaskParent, setNewTaskParent] = useState<TaskT | undefined>();
 
 	useEffect(() => {
 		const fetchTasks = async (): Promise<void> => {
@@ -39,6 +40,7 @@ export const TasksToolPage = (): React.ReactElement => {
 			return exists ? prev.map((task) => (task.id === saved.id ? saved : task)) : [...prev, saved];
 		});
 		setEditing(undefined);
+		setNewTaskParent(undefined);
 	}, []);
 
 	const handleEditTask = useCallback(
@@ -49,8 +51,18 @@ export const TasksToolPage = (): React.ReactElement => {
 		[tasks]
 	);
 
+	const handleAddSubtask = useCallback(
+		(parentId: number) => {
+			const parent = tasks?.find((t) => t.id === parentId);
+			if (!parent) return;
+			setNewTaskParent(parent);
+			setEditing(NEW_TASK);
+		},
+		[tasks]
+	);
+
 	const handleDeleteTask = useCallback((id: number) => {
-		setTasks((prev) => prev?.filter((task) => task.id !== id));
+		setTasks((prev) => prev?.filter((task) => task.id !== id && task.parentId !== id));
 		deleteTask(id).catch((error: unknown) => {
 			console.error('Failed to delete task:', error);
 		});
@@ -71,7 +83,10 @@ export const TasksToolPage = (): React.ReactElement => {
 						<div className="flex justify-end mb-sm">
 							<button
 								type="button"
-								onClick={() => setEditing(NEW_TASK)}
+								onClick={() => {
+									setNewTaskParent(undefined);
+									setEditing(NEW_TASK);
+								}}
 								className="rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200"
 							>
 								Add Task
@@ -86,6 +101,7 @@ export const TasksToolPage = (): React.ReactElement => {
 								onTaskUpdated={handleTaskUpdated}
 								onEditTask={handleEditTask}
 								onDeleteTask={handleDeleteTask}
+								onAddSubtask={handleAddSubtask}
 							/>
 						)}
 					</>
@@ -95,8 +111,17 @@ export const TasksToolPage = (): React.ReactElement => {
 			{editing !== undefined && (
 				<TaskEditPanel
 					task={editing === NEW_TASK ? undefined : editing}
+					parentId={editing === NEW_TASK ? newTaskParent?.id : undefined}
+					initialPosition={
+						editing === NEW_TASK && newTaskParent
+							? { x: newTaskParent.positionX + 40, y: newTaskParent.positionY + 80 }
+							: undefined
+					}
 					onSaved={handleTaskSaved}
-					onClose={() => setEditing(undefined)}
+					onClose={() => {
+						setEditing(undefined);
+						setNewTaskParent(undefined);
+					}}
 				/>
 			)}
 		</div>

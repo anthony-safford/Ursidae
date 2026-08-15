@@ -111,6 +111,58 @@ describe('TasksToolPage', () => {
 		});
 	});
 
+	it("creates a sub-task via a parent card's add-sub-task control and renders it on the canvas", async () => {
+		const user = userEvent.setup();
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.post('/api/tasks', async ({ request }) => {
+				const body = (await request.json()) as { title: string; parentId?: number };
+				return HttpResponse.json(
+					{ ...existingTask, id: 2, title: body.title, parentId: body.parentId ?? null },
+					{ status: 201 }
+				);
+			})
+		);
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByTestId('add-subtask-1')).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByTestId('add-subtask-1'));
+
+		expect(screen.getByRole('heading', { name: 'Add Sub-task' })).toBeInTheDocument();
+
+		await user.type(screen.getByLabelText('Title'), 'Draft the outline');
+		await user.click(screen.getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => {
+			expect(screen.getByText('Draft the outline')).toBeInTheDocument();
+		});
+	});
+
+	it('deletes a parent task and its sub-task disappears from the canvas immediately', async () => {
+		const childTask = { ...existingTask, id: 2, parentId: 1, title: 'Draft the outline' };
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask, childTask])),
+			http.delete('/api/tasks/1', () => new HttpResponse(null, { status: 204 }))
+		);
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByText('Draft the outline')).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByTestId('delete-task-1'));
+
+		await waitFor(() => {
+			expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
+		});
+		expect(screen.queryByText('Draft the outline')).not.toBeInTheDocument();
+	});
+
 	it('deletes a task via its card and removes it from the canvas', async () => {
 		server.use(
 			http.get('/api/tasks', () => HttpResponse.json([existingTask])),

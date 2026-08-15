@@ -80,6 +80,16 @@ describe('tasksRoutes', () => {
 		expect(refetchedTask?.positionY).toBe(45);
 	});
 
+	it('POST /api/tasks rejects a parentId referencing a nonexistent task', async () => {
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/tasks',
+			payload: { title: 'Orphan sub-task', parentId: 999 },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	it('PATCH /api/tasks/:id for a nonexistent id returns 404', async () => {
 		const response = await app.inject({
 			method: 'PATCH',

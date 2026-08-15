@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { TasksCanvas, tasksToNodes, persistTaskPosition } from '../TasksCanvas';
+import { TasksCanvas, tasksToNodes, tasksToEdges, persistTaskPosition } from '../TasksCanvas';
 import type { TaskT } from '../tasksModel';
 
 const baseTask: TaskT = {
@@ -18,18 +18,41 @@ const baseTask: TaskT = {
 	updatedAt: new Date().toISOString(),
 };
 
+const subtask: TaskT = {
+	...baseTask,
+	id: 2,
+	parentId: 1,
+	title: 'Draft the outline',
+	description: null,
+};
+
 describe('tasksToNodes', () => {
-	it('maps each task to a positioned "task" node carrying the task and onDelete as data', () => {
+	it('maps each task to a positioned "task" node carrying the task, onDelete, and onAddSubtask as data', () => {
 		const onDelete = vi.fn();
-		const nodes = tasksToNodes([baseTask], onDelete);
+		const onAddSubtask = vi.fn();
+		const nodes = tasksToNodes([baseTask], onDelete, onAddSubtask);
 
 		expect(nodes).toEqual([
 			{
 				id: '1',
 				type: 'task',
 				position: { x: 10, y: 20 },
-				data: { task: baseTask, onDelete },
+				data: { task: baseTask, onDelete, onAddSubtask },
 			},
+		]);
+	});
+});
+
+describe('tasksToEdges', () => {
+	it('returns no edges when no task has a parentId', () => {
+		expect(tasksToEdges([baseTask])).toEqual([]);
+	});
+
+	it('emits a hierarchy edge from parent to child for each sub-task', () => {
+		const edges = tasksToEdges([baseTask, subtask]);
+
+		expect(edges).toEqual([
+			expect.objectContaining({ id: 'hierarchy-1-2', source: '1', target: '2' }),
 		]);
 	});
 });
@@ -76,6 +99,7 @@ describe('TasksCanvas', () => {
 				onTaskUpdated={vi.fn()}
 				onEditTask={vi.fn()}
 				onDeleteTask={vi.fn()}
+				onAddSubtask={vi.fn()}
 			/>
 		);
 
@@ -95,6 +119,7 @@ describe('TasksCanvas', () => {
 				onTaskUpdated={vi.fn()}
 				onEditTask={onEditTask}
 				onDeleteTask={vi.fn()}
+				onAddSubtask={vi.fn()}
 			/>
 		);
 
@@ -117,6 +142,7 @@ describe('TasksCanvas', () => {
 				onTaskUpdated={vi.fn()}
 				onEditTask={onEditTask}
 				onDeleteTask={onDeleteTask}
+				onAddSubtask={vi.fn()}
 			/>
 		);
 
@@ -124,5 +150,38 @@ describe('TasksCanvas', () => {
 
 		expect(onDeleteTask).toHaveBeenCalledWith(1);
 		expect(onEditTask).not.toHaveBeenCalled();
+	});
+
+	it("calls onAddSubtask with the parent id when a top-level card's add-sub-task button is clicked", () => {
+		const onAddSubtask = vi.fn();
+
+		render(
+			<TasksCanvas
+				tasks={[baseTask]}
+				onTaskUpdated={vi.fn()}
+				onEditTask={vi.fn()}
+				onDeleteTask={vi.fn()}
+				onAddSubtask={onAddSubtask}
+			/>
+		);
+
+		fireEvent.click(screen.getByTestId('add-subtask-1'));
+
+		expect(onAddSubtask).toHaveBeenCalledWith(1);
+	});
+
+	it('does not render an add-sub-task button on a sub-task card', () => {
+		render(
+			<TasksCanvas
+				tasks={[baseTask, subtask]}
+				onTaskUpdated={vi.fn()}
+				onEditTask={vi.fn()}
+				onDeleteTask={vi.fn()}
+				onAddSubtask={vi.fn()}
+			/>
+		);
+
+		expect(screen.getByTestId('add-subtask-1')).toBeInTheDocument();
+		expect(screen.queryByTestId('add-subtask-2')).not.toBeInTheDocument();
 	});
 });

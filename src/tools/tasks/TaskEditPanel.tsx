@@ -6,6 +6,10 @@ import type { TaskStatusT, TaskT } from './tasksModel';
 interface TaskEditPanelProps {
 	/** Task being edited, or undefined to create a new task. */
 	task?: TaskT;
+	/** Parent task id for a new sub-task; ignored in edit mode. */
+	parentId?: number;
+	/** Initial canvas position for a new task; ignored in edit mode. */
+	initialPosition?: { x: number; y: number };
 	/** Called after the task is successfully created or updated. */
 	onSaved: (task: TaskT) => void;
 	/** Called when the panel is dismissed without saving. */
@@ -21,6 +25,8 @@ const STATUS_OPTIONS: { value: TaskStatusT; label: string }[] = [
 /** Modal form for creating or editing a task's title, description, questions, and status. */
 export const TaskEditPanel = ({
 	task,
+	parentId,
+	initialPosition,
 	onSaved,
 	onClose,
 }: TaskEditPanelProps): React.ReactElement => {
@@ -41,6 +47,13 @@ export const TaskEditPanel = ({
 			description: description.trim() || null,
 			questions: questions.trim() || null,
 			status,
+			...(task
+				? {}
+				: {
+						parentId,
+						positionX: initialPosition?.x,
+						positionY: initialPosition?.y,
+					}),
 		};
 
 		const save = task ? updateTask(task.id, input) : createTask(input);
@@ -61,7 +74,9 @@ export const TaskEditPanel = ({
 		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-md">
 			<div className="bg-surface border border-border rounded-brand p-lg w-full max-w-[28rem]">
 				<div className="flex items-center justify-between mb-md">
-					<h3 className="text-lg font-semibold">{task ? 'Edit Task' : 'Add Task'}</h3>
+					<h3 className="text-lg font-semibold">
+						{task ? 'Edit Task' : parentId !== undefined ? 'Add Sub-task' : 'Add Task'}
+					</h3>
 					<button
 						type="button"
 						onClick={onClose}

@@ -87,6 +87,40 @@ describe('TaskEditPanel', () => {
 		expect(capturedBody).toEqual(expect.objectContaining({ status: 'done' }));
 	});
 
+	it('renders "Add Sub-task" and includes parentId/position when creating with a parentId', async () => {
+		const user = userEvent.setup();
+		let capturedBody: unknown;
+		server.use(
+			http.post('/api/tasks', async ({ request }) => {
+				capturedBody = await request.json();
+				return HttpResponse.json(
+					{ ...existingTask, id: 3, parentId: 1, title: 'Sub-task' },
+					{ status: 201 }
+				);
+			})
+		);
+
+		render(
+			<TaskEditPanel
+				parentId={1}
+				initialPosition={{ x: 40, y: 80 }}
+				onSaved={vi.fn()}
+				onClose={vi.fn()}
+			/>
+		);
+
+		expect(screen.getByRole('heading', { name: 'Add Sub-task' })).toBeInTheDocument();
+
+		await user.type(screen.getByLabelText('Title'), 'Sub-task');
+		await user.click(screen.getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => {
+			expect(capturedBody).toEqual(
+				expect.objectContaining({ parentId: 1, positionX: 40, positionY: 80 })
+			);
+		});
+	});
+
 	it('calls onClose when Cancel is clicked', async () => {
 		const user = userEvent.setup();
 		const onClose = vi.fn();

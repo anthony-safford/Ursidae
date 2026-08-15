@@ -74,6 +74,12 @@ export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify,
 				.send({ error: { code: 'VALIDATION_ERROR', message: 'title is required' } });
 		}
 
+		if (parentId !== undefined && !db.select().from(tasks).where(eq(tasks.id, parentId)).get()) {
+			return reply.status(400).send({
+				error: { code: 'VALIDATION_ERROR', message: 'parentId must reference an existing task' },
+			});
+		}
+
 		const newTask = db
 			.insert(tasks)
 			.values({ title, description, questions, status, parentId, positionX, positionY })
@@ -91,6 +97,13 @@ export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify,
 			return reply
 				.status(404)
 				.send({ error: { code: 'NOT_FOUND', message: `Task ${id} not found` } });
+		}
+
+		const { parentId } = request.body;
+		if (parentId !== undefined && !db.select().from(tasks).where(eq(tasks.id, parentId)).get()) {
+			return reply.status(400).send({
+				error: { code: 'VALIDATION_ERROR', message: 'parentId must reference an existing task' },
+			});
 		}
 
 		const patched = db
