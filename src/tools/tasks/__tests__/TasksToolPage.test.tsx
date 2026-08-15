@@ -54,6 +54,6 @@ describe('TasksToolPage', () => {
 		});
 
 		expect(screen.getByText('Cover Q3 numbers')).toBeInTheDocument();
-		expect(screen.getByText('open')).toBeInTheDocument();
+		expect(screen.getByText('Open')).toBeInTheDocument();
 	});
 });

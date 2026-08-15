@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { getTasks } from './tasksApi';
+import { TasksCanvas } from './TasksCanvas';
 import type { TaskT } from './tasksModel';
 
 /**
- * Tasks tool page. Currently renders a plain list of persisted tasks; the freeform
- * canvas and relationship diagramming land in later features of this epic.
+ * Tasks tool page: a freeform canvas of persisted tasks. Creating/editing tasks,
+ * sub-tasks, and relationship links land in later features of this epic.
  */
 export const TasksToolPage = (): React.ReactElement => {
 	const [tasks, setTasks] = useState<TaskT[] | undefined>();
@@ -22,11 +23,15 @@ export const TasksToolPage = (): React.ReactElement => {
 		void fetchTasks();
 	}, []);
 
+	const handleTaskUpdated = useCallback((updated: TaskT) => {
+		setTasks((prev) => prev?.map((task) => (task.id === updated.id ? updated : task)));
+	}, []);
+
 	return (
 		<div className="p-lg">
 			<h2 className="text-2xl font-bold">Tasks</h2>
 			<p className="text-text-muted">
-				Unplanned, untracked tasks and sub-tasks. A freeform relationship canvas is coming soon.
+				Unplanned, untracked tasks and sub-tasks, on a freeform relationship canvas.
 			</p>
 
 			<div className="mt-lg">
@@ -35,21 +40,7 @@ export const TasksToolPage = (): React.ReactElement => {
 				) : tasks.length === 0 ? (
 					<p className="text-text-muted">No tasks yet.</p>
 				) : (
-					<ul className="flex flex-col gap-sm">
-						{tasks.map((task) => (
-							<li key={task.id} className="bg-surface border border-border rounded-brand p-md">
-								<div className="flex items-center justify-between gap-sm">
-									<span className="font-semibold">{task.title}</span>
-									<span className="text-xs uppercase tracking-wide text-text-muted">
-										{task.status}
-									</span>
-								</div>
-								{task.description && (
-									<p className="text-sm text-text-muted mt-xs">{task.description}</p>
-								)}
-							</li>
-						))}
-					</ul>
+					<TasksCanvas tasks={tasks} onTaskUpdated={handleTaskUpdated} />
 				)}
 			</div>
 		</div>
