@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
 import { TasksToolPage } from '../TasksToolPage';
@@ -10,13 +10,17 @@ const existingTask = {
 	parentId: null,
 	title: 'Write the report',
 	description: 'Cover Q3 numbers',
-	questions: null,
-	status: 'open' as const,
+	status: 'discovery' as const,
 	positionX: 0,
 	positionY: 0,
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 };
+
+beforeEach(() => {
+	// Default: no questions unless a test overrides it. TasksToolPage always fetches both on mount.
+	server.use(http.get('/api/tasks/questions', () => HttpResponse.json([])));
+});
 
 describe('TasksToolPage', () => {
 	it('renders the tasks heading and description', () => {
@@ -41,17 +45,19 @@ describe('TasksToolPage', () => {
 		});
 	});
 
-	it('renders fetched tasks with their title, status, and description', async () => {
+	it('renders fetched tasks with editable title/description and their status', async () => {
 		server.use(http.get('/api/tasks', () => HttpResponse.json([existingTask])));
 
 		render(<TasksToolPage />);
 
 		await waitFor(() => {
-			expect(screen.getByText('Write the report')).toBeInTheDocument();
+			expect(screen.getByLabelText('Title for Write the report')).toHaveValue('Write the report');
 		});
 
-		expect(screen.getByText('Cover Q3 numbers')).toBeInTheDocument();
-		expect(screen.getByText('Open')).toBeInTheDocument();
+		expect(screen.getByLabelText('Description for Write the report')).toHaveValue(
+			'Cover Q3 numbers'
+		);
+		expect(screen.getByLabelText('Status for Write the report')).toHaveValue('discovery');
 	});
 
 	it('creates a task via the Add Task panel and renders it on the canvas', async () => {
@@ -78,12 +84,75 @@ describe('TasksToolPage', () => {
 		await user.click(screen.getByRole('button', { name: 'Save' }));
 
 		await waitFor(() => {
-			expect(screen.getByText('Plan the launch')).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Plan the launch')).toBeInTheDocument();
 		});
 	});
 
-	it('edits a task via its card and reflects the change on the canvas', async () => {
+	it('closes the Add Task panel via Cancel without creating a task', async () => {
 		const user = userEvent.setup();
+		server.use(http.get('/api/tasks', () => HttpResponse.json([])));
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Add Task' })).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByRole('button', { name: 'Add Task' }));
+		expect(screen.getByRole('heading', { name: 'Add Task' })).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+		expect(screen.queryByRole('heading', { name: 'Add Task' })).not.toBeInTheDocument();
+		expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
+	});
+
+	it('logs an error when adding a question fails', async () => {
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.post('/api/tasks/questions', () => HttpResponse.error())
+		);
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		render(<TasksToolPage />);
+
+		const input = await screen.findByLabelText('Add a question to Write the report');
+		fireEvent.change(input, { target: { value: 'Who owns the budget?' } });
+		fireEvent.click(screen.getByTestId('add-question-1'));
+
+		await waitFor(() => {
+			expect(consoleErrorSpy).toHaveBeenCalled();
+		});
+		expect(screen.queryByText('Who owns the budget?')).not.toBeInTheDocument();
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('logs an error when deleting a question fails', async () => {
+		const existingQuestion = {
+			id: 1,
+			taskId: 1,
+			text: 'Who owns the budget?',
+			createdAt: new Date().toISOString(),
+		};
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.get('/api/tasks/questions', () => HttpResponse.json([existingQuestion])),
+			http.delete('/api/tasks/questions/1', () => HttpResponse.error())
+		);
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		render(<TasksToolPage />);
+
+		await screen.findByText('Who owns the budget?');
+		fireEvent.click(screen.getByTestId('delete-question-1'));
+
+		await waitFor(() => {
+			expect(consoleErrorSpy).toHaveBeenCalled();
+		});
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('edits a task inline on its card and reflects the change on the canvas', async () => {
 		server.use(
 			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
 			http.patch('/api/tasks/1', () =>
@@ -93,21 +162,14 @@ describe('TasksToolPage', () => {
 
 		render(<TasksToolPage />);
 
-		await waitFor(() => {
-			expect(screen.getByText('Write the report')).toBeInTheDocument();
-		});
-
-		fireEvent.click(screen.getByText('Write the report'));
-
-		const titleInput = await screen.findByLabelText('Title');
+		const titleInput = await screen.findByLabelText('Title for Write the report');
 		expect(titleInput).toHaveValue('Write the report');
 
-		await user.clear(titleInput);
-		await user.type(titleInput, 'Write the final report');
-		await user.click(screen.getByRole('button', { name: 'Save' }));
+		fireEvent.change(titleInput, { target: { value: 'Write the final report' } });
+		fireEvent.blur(titleInput);
 
 		await waitFor(() => {
-			expect(screen.getByText('Write the final report')).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Write the final report')).toBeInTheDocument();
 		});
 	});
 
@@ -138,29 +200,84 @@ describe('TasksToolPage', () => {
 		await user.click(screen.getByRole('button', { name: 'Save' }));
 
 		await waitFor(() => {
-			expect(screen.getByText('Draft the outline')).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Draft the outline')).toBeInTheDocument();
 		});
 	});
 
-	it('deletes a parent task and its sub-task disappears from the canvas immediately', async () => {
+	it('adds a question to a task via its card and renders it as a removable card', async () => {
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.post('/api/tasks/questions', async ({ request }) => {
+				const body = (await request.json()) as { taskId: number; text: string };
+				return HttpResponse.json(
+					{ id: 1, taskId: body.taskId, text: body.text, createdAt: new Date().toISOString() },
+					{ status: 201 }
+				);
+			})
+		);
+
+		render(<TasksToolPage />);
+
+		const input = await screen.findByLabelText('Add a question to Write the report');
+		fireEvent.change(input, { target: { value: 'Who owns the budget?' } });
+		fireEvent.click(screen.getByTestId('add-question-1'));
+
+		await waitFor(() => {
+			expect(screen.getByText('Who owns the budget?')).toBeInTheDocument();
+		});
+	});
+
+	it('removes a question from a task via its remove button', async () => {
+		const existingQuestion = {
+			id: 1,
+			taskId: 1,
+			text: 'Who owns the budget?',
+			createdAt: new Date().toISOString(),
+		};
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.get('/api/tasks/questions', () => HttpResponse.json([existingQuestion])),
+			http.delete('/api/tasks/questions/1', () => new HttpResponse(null, { status: 204 }))
+		);
+
+		render(<TasksToolPage />);
+
+		await screen.findByText('Who owns the budget?');
+		fireEvent.click(screen.getByTestId('delete-question-1'));
+
+		await waitFor(() => {
+			expect(screen.queryByText('Who owns the budget?')).not.toBeInTheDocument();
+		});
+	});
+
+	it('deletes a parent task, and its sub-task and questions disappear from the canvas immediately', async () => {
 		const childTask = { ...existingTask, id: 2, parentId: 1, title: 'Draft the outline' };
+		const parentQuestion = {
+			id: 1,
+			taskId: 1,
+			text: 'Who owns the budget?',
+			createdAt: new Date().toISOString(),
+		};
 		server.use(
 			http.get('/api/tasks', () => HttpResponse.json([existingTask, childTask])),
+			http.get('/api/tasks/questions', () => HttpResponse.json([parentQuestion])),
 			http.delete('/api/tasks/1', () => new HttpResponse(null, { status: 204 }))
 		);
 
 		render(<TasksToolPage />);
 
 		await waitFor(() => {
-			expect(screen.getByText('Draft the outline')).toBeInTheDocument();
+			expect(screen.getByDisplayValue('Draft the outline')).toBeInTheDocument();
 		});
+		expect(screen.getByText('Who owns the budget?')).toBeInTheDocument();
 
 		fireEvent.click(screen.getByTestId('delete-task-1'));
 
 		await waitFor(() => {
 			expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
 		});
-		expect(screen.queryByText('Draft the outline')).not.toBeInTheDocument();
+		expect(screen.queryByDisplayValue('Draft the outline')).not.toBeInTheDocument();
+		expect(screen.queryByText('Who owns the budget?')).not.toBeInTheDocument();
 	});
 
 	it('deletes a task via its card and removes it from the canvas', async () => {
@@ -172,7 +289,7 @@ describe('TasksToolPage', () => {
 		render(<TasksToolPage />);
 
 		await waitFor(() => {
-			expect(screen.getByText('Write the report')).toBeInTheDocument();
+			expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
 		});
 
 		fireEvent.click(screen.getByTestId('delete-task-1'));

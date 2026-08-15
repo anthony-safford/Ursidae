@@ -39,7 +39,7 @@ describe('tasksRoutes', () => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(response.json().title).toBe('Write the report');
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		expect(response.json().status).toBe('open');
+		expect(response.json().status).toBe('discovery');
 	});
 
 	it('POST /api/tasks without a title returns 400', async () => {
@@ -100,7 +100,7 @@ describe('tasksRoutes', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	it('DELETE /api/tasks/:id on a parent cascades to its child task and any referencing links', async () => {
+	it('DELETE /api/tasks/:id on a parent cascades to its child task, referencing links, and questions', async () => {
 		const parent = await app.inject({
 			method: 'POST',
 			url: '/api/tasks',
@@ -133,6 +133,14 @@ describe('tasksRoutes', () => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const linkId = link.json().id as number;
 
+		const question = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/questions',
+			payload: { taskId: parentId, text: 'Who owns this?' },
+		});
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const questionId = question.json().id as number;
+
 		const afterDelete = await app.inject({ method: 'DELETE', url: `/api/tasks/${parentId}` });
 		expect(afterDelete.statusCode).toBe(204);
 
@@ -147,6 +155,11 @@ describe('tasksRoutes', () => {
 			await app.inject({ method: 'GET', url: '/api/tasks/links' })
 		).json();
 		expect(remainingLinks.map((l) => l.id)).not.toContain(linkId);
+
+		const remainingQuestions: { id: number }[] = (
+			await app.inject({ method: 'GET', url: '/api/tasks/questions' })
+		).json();
+		expect(remainingQuestions.map((q) => q.id)).not.toContain(questionId);
 	});
 
 	it('POST /api/tasks/links creates a link between two existing tasks', async () => {
@@ -219,5 +232,76 @@ describe('tasksRoutes', () => {
 			await app.inject({ method: 'GET', url: '/api/tasks/links' })
 		).json();
 		expect(remainingLinks.map((l) => l.id)).not.toContain(linkId);
+	});
+
+	it('POST /api/tasks/questions creates a question for an existing task', async () => {
+		const a = await app.inject({ method: 'POST', url: '/api/tasks', payload: { title: 'A' } });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const taskId = a.json().id as number;
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/questions',
+			payload: { taskId, text: 'Who owns the budget?' },
+		});
+
+		expect(response.statusCode).toBe(201);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(response.json().text).toBe('Who owns the budget?');
+	});
+
+	it('POST /api/tasks/questions rejects a missing text', async () => {
+		const a = await app.inject({ method: 'POST', url: '/api/tasks', payload: { title: 'A' } });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const taskId = a.json().id as number;
+
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/questions',
+			payload: { taskId },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it('POST /api/tasks/questions rejects a taskId referencing a nonexistent task', async () => {
+		const response = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/questions',
+			payload: { taskId: 999, text: 'Orphan question' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it('DELETE /api/tasks/questions/:id removes the question', async () => {
+		const a = await app.inject({ method: 'POST', url: '/api/tasks', payload: { title: 'A' } });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const taskId = a.json().id as number;
+
+		const question = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/questions',
+			payload: { taskId, text: 'Who owns the budget?' },
+		});
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const questionId = question.json().id as number;
+
+		const afterDelete = await app.inject({
+			method: 'DELETE',
+			url: `/api/tasks/questions/${questionId}`,
+		});
+		expect(afterDelete.statusCode).toBe(204);
+
+		const remainingQuestions: { id: number }[] = (
+			await app.inject({ method: 'GET', url: '/api/tasks/questions' })
+		).json();
+		expect(remainingQuestions.map((q) => q.id)).not.toContain(questionId);
+	});
+
+	it('DELETE /api/tasks/questions/:id for a nonexistent id returns 404', async () => {
+		const response = await app.inject({ method: 'DELETE', url: '/api/tasks/questions/999' });
+
+		expect(response.statusCode).toBe(404);
 	});
 });

@@ -15,16 +15,27 @@ export const tasks = sqliteTable('tasks', {
 	}),
 	title: text().notNull(),
 	description: text(),
-	questions: text(),
-	status: text({ enum: ['open', 'in_progress', 'done'] })
+	status: text({ enum: ['discovery', 'research', 'plan'] })
 		.notNull()
-		.default('open'),
+		.default('discovery'),
 	positionX: real().notNull().default(0),
 	positionY: real().notNull().default(0),
 	createdAt: integer({ mode: 'timestamp_ms' })
 		.notNull()
 		.$defaultFn(() => new Date()),
 	updatedAt: integer({ mode: 'timestamp_ms' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
+
+/** Discrete open questions attached to a task, each removable independently. */
+export const taskQuestions = sqliteTable('task_questions', {
+	id: integer({ mode: 'number' }).primaryKey({ autoIncrement: true }),
+	taskId: integer({ mode: 'number' })
+		.notNull()
+		.references(() => tasks.id, { onDelete: 'cascade' }),
+	text: text().notNull(),
+	createdAt: integer({ mode: 'timestamp_ms' })
 		.notNull()
 		.$defaultFn(() => new Date()),
 });

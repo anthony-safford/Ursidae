@@ -1,39 +1,29 @@
 import React, { useState } from 'react';
 import { X } from '@phosphor-icons/react';
-import { createTask, updateTask } from './tasksApi';
-import type { TaskStatusT, TaskT } from './tasksModel';
+import { createTask } from './tasksApi';
+import { TASK_STATUS_OPTIONS, type TaskStatusT, type TaskT } from './tasksModel';
 
 interface TaskEditPanelProps {
-	/** Task being edited, or undefined to create a new task. */
-	task?: TaskT;
-	/** Parent task id for a new sub-task; ignored in edit mode. */
+	/** Parent task id for a new sub-task; omit for a top-level task. */
 	parentId?: number;
-	/** Initial canvas position for a new task; ignored in edit mode. */
+	/** Initial canvas position for the new task. */
 	initialPosition?: { x: number; y: number };
-	/** Called after the task is successfully created or updated. */
+	/** Called after the task is successfully created. */
 	onSaved: (task: TaskT) => void;
 	/** Called when the panel is dismissed without saving. */
 	onClose: () => void;
 }
 
-const STATUS_OPTIONS: { value: TaskStatusT; label: string }[] = [
-	{ value: 'open', label: 'Open' },
-	{ value: 'in_progress', label: 'In Progress' },
-	{ value: 'done', label: 'Done' },
-];
-
-/** Modal form for creating or editing a task's title, description, questions, and status. */
+/** Modal form for creating a new task or sub-task; editing happens inline on the card itself. */
 export const TaskEditPanel = ({
-	task,
 	parentId,
 	initialPosition,
 	onSaved,
 	onClose,
 }: TaskEditPanelProps): React.ReactElement => {
-	const [title, setTitle] = useState(task?.title ?? '');
-	const [description, setDescription] = useState(task?.description ?? '');
-	const [questions, setQuestions] = useState(task?.questions ?? '');
-	const [status, setStatus] = useState<TaskStatusT>(task?.status ?? 'open');
+	const [title, setTitle] = useState('');
+	const [description, setDescription] = useState('');
+	const [status, setStatus] = useState<TaskStatusT>('discovery');
 	const [saving, setSaving] = useState(false);
 
 	const handleSubmit = (event: React.FormEvent): void => {
@@ -42,23 +32,14 @@ export const TaskEditPanel = ({
 
 		setSaving(true);
 
-		const input = {
+		createTask({
 			title: title.trim(),
 			description: description.trim() || null,
-			questions: questions.trim() || null,
 			status,
-			...(task
-				? {}
-				: {
-						parentId,
-						positionX: initialPosition?.x,
-						positionY: initialPosition?.y,
-					}),
-		};
-
-		const save = task ? updateTask(task.id, input) : createTask(input);
-
-		save
+			parentId,
+			positionX: initialPosition?.x,
+			positionY: initialPosition?.y,
+		})
 			.then((saved) => {
 				onSaved(saved);
 			})
@@ -75,7 +56,7 @@ export const TaskEditPanel = ({
 			<div className="bg-surface border border-border rounded-brand p-lg w-full max-w-[28rem]">
 				<div className="flex items-center justify-between mb-md">
 					<h3 className="text-lg font-semibold">
-						{task ? 'Edit Task' : parentId !== undefined ? 'Add Sub-task' : 'Add Task'}
+						{parentId !== undefined ? 'Add Sub-task' : 'Add Task'}
 					</h3>
 					<button
 						type="button"
@@ -110,23 +91,13 @@ export const TaskEditPanel = ({
 					</label>
 
 					<label className="flex flex-col gap-xs">
-						<span className="text-xs uppercase tracking-wide text-text-muted">Questions</span>
-						<textarea
-							value={questions}
-							onChange={(e) => setQuestions(e.target.value)}
-							rows={2}
-							className="w-full bg-bg border border-border rounded-brand p-sm text-text"
-						/>
-					</label>
-
-					<label className="flex flex-col gap-xs">
 						<span className="text-xs uppercase tracking-wide text-text-muted">Status</span>
 						<select
 							value={status}
 							onChange={(e) => setStatus(e.target.value as TaskStatusT)}
 							className="w-full bg-bg border border-border rounded-brand p-sm text-text"
 						>
-							{STATUS_OPTIONS.map((option) => (
+							{TASK_STATUS_OPTIONS.map((option) => (
 								<option key={option.value} value={option.value}>
 									{option.label}
 								</option>

@@ -6,39 +6,59 @@ import {
 	useEdgesState,
 	type Edge,
 	type OnNodeDrag,
-	type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { TaskNode, type TaskNodeT } from './TaskNode';
 import { updateTask } from './tasksApi';
-import type { TaskT } from './tasksModel';
+import type { TaskQuestionT, TaskT } from './tasksModel';
 
 const nodeTypes = { task: TaskNode };
 
 interface TasksCanvasProps {
 	/** Tasks to render as nodes, positioned at their persisted x/y. */
 	tasks: TaskT[];
-	/** Called with the updated task after a drag persists its new position. */
+	/** Questions across all tasks; filtered per-node by taskId. */
+	questions: TaskQuestionT[];
+	/** Called with the updated task after a drag or inline field edit persists. */
 	onTaskUpdated: (task: TaskT) => void;
-	/** Called with a task's id when its card is clicked, to open it for editing. */
-	onEditTask: (id: number) => void;
 	/** Called with a task's id when its delete action is clicked. */
 	onDeleteTask: (id: number) => void;
 	/** Called with a task's id when its "add sub-task" action is clicked. */
 	onAddSubtask: (parentId: number) => void;
+	/** Called with a task's id and the changed fields when an inline edit is committed. */
+	onFieldChange: (
+		id: number,
+		patch: Partial<Pick<TaskT, 'title' | 'description' | 'status'>>
+	) => void;
+	/** Called with a task's id and text when a question is added to it. */
+	onAddQuestion: (taskId: number, text: string) => void;
+	/** Called with a question's id when it's removed. */
+	onDeleteQuestion: (id: number) => void;
 }
 
 /** Maps tasks to React Flow nodes positioned at their persisted x/y. */
 export function tasksToNodes(
 	tasks: TaskT[],
+	questions: TaskQuestionT[],
 	onDelete: (id: number) => void,
-	onAddSubtask: (parentId: number) => void
+	onAddSubtask: (parentId: number) => void,
+	onFieldChange: TasksCanvasProps['onFieldChange'],
+	onAddQuestion: (taskId: number, text: string) => void,
+	onDeleteQuestion: (id: number) => void
 ): TaskNodeT[] {
 	return tasks.map((task) => ({
 		id: String(task.id),
 		type: 'task',
 		position: { x: task.positionX, y: task.positionY },
-		data: { task, onDelete, onAddSubtask },
+		data: {
+			task,
+			questions: questions.filter((q) => q.taskId === task.id),
+			onDelete,
+			onAddSubtask,
+			onFieldChange,
+			onAddQuestion,
+			onDeleteQuestion,
+		},
 	}));
 }
 
@@ -50,7 +70,7 @@ export function tasksToEdges(tasks: TaskT[]): Edge[] {
 			id: `hierarchy-${task.parentId}-${task.id}`,
 			source: String(task.parentId),
 			target: String(task.id),
-			style: { stroke: 'var(--color-border)', strokeDasharray: '4 4' },
+			style: { stroke: 'var(--color-text-muted)', strokeWidth: 1.5, strokeDasharray: '4 4' },
 		}));
 }
 
@@ -67,36 +87,60 @@ export function persistTaskPosition(
 		});
 }
 
-/** Freeform, pannable/zoomable canvas rendering tasks as draggable, clickable cards. */
+/** Freeform, pannable/zoomable canvas rendering tasks as draggable, inline-editable cards. */
 export const TasksCanvas = ({
 	tasks,
+	questions,
 	onTaskUpdated,
-	onEditTask,
 	onDeleteTask,
 	onAddSubtask,
+	onFieldChange,
+	onAddQuestion,
+	onDeleteQuestion,
 }: TasksCanvasProps): React.ReactElement => {
 	const [nodes, setNodes, onNodesChange] = useNodesState<TaskNodeT>(
-		tasksToNodes(tasks, onDeleteTask, onAddSubtask)
+		tasksToNodes(
+			tasks,
+			questions,
+			onDeleteTask,
+			onAddSubtask,
+			onFieldChange,
+			onAddQuestion,
+			onDeleteQuestion
+		)
 	);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(tasksToEdges(tasks));
 
 	useEffect(() => {
-		setNodes(tasksToNodes(tasks, onDeleteTask, onAddSubtask));
+		setNodes(
+			tasksToNodes(
+				tasks,
+				questions,
+				onDeleteTask,
+				onAddSubtask,
+				onFieldChange,
+				onAddQuestion,
+				onDeleteQuestion
+			)
+		);
 		setEdges(tasksToEdges(tasks));
-	}, [tasks, onDeleteTask, onAddSubtask, setNodes, setEdges]);
+	}, [
+		tasks,
+		questions,
+		onDeleteTask,
+		onAddSubtask,
+		onFieldChange,
+		onAddQuestion,
+		onDeleteQuestion,
+		setNodes,
+		setEdges,
+	]);
 
 	const handleNodeDragStop: OnNodeDrag<TaskNodeT> = useCallback(
 		(_event, node) => {
 			void persistTaskPosition(node, onTaskUpdated);
 		},
 		[onTaskUpdated]
-	);
-
-	const handleNodeClick: NodeMouseHandler<TaskNodeT> = useCallback(
-		(_event, node) => {
-			onEditTask(Number(node.id));
-		},
-		[onEditTask]
 	);
 
 	return (
@@ -108,7 +152,6 @@ export const TasksCanvas = ({
 				onEdgesChange={onEdgesChange}
 				nodeTypes={nodeTypes}
 				onNodeDragStop={handleNodeDragStop}
-				onNodeClick={handleNodeClick}
 				fitView
 			>
 				<Background />

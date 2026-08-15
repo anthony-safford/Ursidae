@@ -1,7 +1,7 @@
 import { type FastifyPluginCallback } from 'fastify';
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { tasks, taskLinks } from './db/schema.js';
+import { tasks, taskLinks, taskQuestions } from './db/schema.js';
 import { getTasksDb } from './db/connection.js';
 
 /**
@@ -15,8 +15,7 @@ export interface TasksRoutesOptionsT {
 interface CreateTaskBodyT {
 	title: string;
 	description?: string;
-	questions?: string;
-	status?: 'open' | 'in_progress' | 'done';
+	status?: 'discovery' | 'research' | 'plan';
 	parentId?: number;
 	positionX?: number;
 	positionY?: number;
@@ -25,8 +24,7 @@ interface CreateTaskBodyT {
 interface UpdateTaskBodyT {
 	title?: string;
 	description?: string;
-	questions?: string;
-	status?: 'open' | 'in_progress' | 'done';
+	status?: 'discovery' | 'research' | 'plan';
 	parentId?: number;
 	positionX?: number;
 	positionY?: number;
@@ -36,6 +34,11 @@ interface CreateTaskLinkBodyT {
 	sourceTaskId: number;
 	targetTaskId: number;
 	type?: 'blocks' | 'related' | 'order';
+}
+
+interface CreateTaskQuestionBodyT {
+	taskId: number;
+	text: string;
 }
 
 // Fastify's typed-route generics require these exact PascalCase keys (Body/Params).
@@ -53,10 +56,14 @@ interface TaskIdParamRouteT {
 interface CreateTaskLinkRouteT {
 	Body: CreateTaskLinkBodyT;
 }
+interface CreateTaskQuestionRouteT {
+	Body: CreateTaskQuestionBodyT;
+}
 /* eslint-enable @typescript-eslint/naming-convention */
 
 /**
- * Fastify plugin providing tasks tool CRUD endpoints for tasks and their relationship links.
+ * Fastify plugin providing tasks tool CRUD endpoints for tasks, their relationship links, and
+ * their questions.
  */
 export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify, opts, done) => {
 	const db = opts.db ?? getTasksDb();
@@ -66,7 +73,7 @@ export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify,
 	});
 
 	fastify.post<CreateTaskRouteT>('/', async (request, reply) => {
-		const { title, description, questions, status, parentId, positionX, positionY } = request.body;
+		const { title, description, status, parentId, positionX, positionY } = request.body;
 
 		if (!title) {
 			return reply
@@ -82,7 +89,7 @@ export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify,
 
 		const newTask = db
 			.insert(tasks)
-			.values({ title, description, questions, status, parentId, positionX, positionY })
+			.values({ title, description, status, parentId, positionX, positionY })
 			.returning()
 			.get();
 
@@ -182,6 +189,45 @@ export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify,
 		}
 
 		db.delete(taskLinks).where(eq(taskLinks.id, id)).run();
+
+		return reply.status(204).send();
+	});
+
+	fastify.get('/questions', () => {
+		return db.select().from(taskQuestions).all();
+	});
+
+	fastify.post<CreateTaskQuestionRouteT>('/questions', async (request, reply) => {
+		const { taskId, text } = request.body;
+
+		if (!text) {
+			return reply
+				.status(400)
+				.send({ error: { code: 'VALIDATION_ERROR', message: 'text is required' } });
+		}
+
+		if (!taskId || !db.select().from(tasks).where(eq(tasks.id, taskId)).get()) {
+			return reply.status(400).send({
+				error: { code: 'VALIDATION_ERROR', message: 'taskId must reference an existing task' },
+			});
+		}
+
+		const newQuestion = db.insert(taskQuestions).values({ taskId, text }).returning().get();
+
+		return reply.status(201).send(newQuestion);
+	});
+
+	fastify.delete<TaskIdParamRouteT>('/questions/:id', async (request, reply) => {
+		const id = Number(request.params.id);
+		const existing = db.select().from(taskQuestions).where(eq(taskQuestions.id, id)).get();
+
+		if (!existing) {
+			return reply
+				.status(404)
+				.send({ error: { code: 'NOT_FOUND', message: `Task question ${id} not found` } });
+		}
+
+		db.delete(taskQuestions).where(eq(taskQuestions.id, id)).run();
 
 		return reply.status(204).send();
 	});
