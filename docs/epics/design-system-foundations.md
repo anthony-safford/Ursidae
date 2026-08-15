@@ -1,4 +1,4 @@
-# Design system foundations
+# Design system foundations #45
 
 <!-- slug: design-system-foundations -->
 
@@ -9,18 +9,18 @@ unfinished, finance-specific work. Built from financial-hub's own commits via `g
 (financial-hub's branch and history are untouched), split where a commit mixed generic and
 finance-specific changes.
 
-## Design tokens, brand font, and default icon set
+## Design tokens, brand font, and default icon set #46
 
 Add the Tailwind `@theme` design tokens (colors, fonts, spacing, radius) to `src/index.css`, the
 self-hosted brand font, and Phosphor icons as the default icon set. Update the landing, not-found,
 tool, and example pages to consume the new tokens.
 
-## Breadcrumb nav and layout rework
+## Breadcrumb nav and layout rework #47
 
 Rework the top-level nav into a breadcrumb-style bar and update the surrounding page layout to
 match, driven by the tool registry.
 
-## Reusable draggable/resizable tile grid
+## Reusable draggable/resizable tile grid #48
 
 Add generic `Tile` and `TileGrid` components (built on `react-grid-layout`) for equal-size
 dashboard tiles that can be dragged to reorder and resized, plus the danger-color tokens and
