@@ -59,7 +59,7 @@ export const TaskEditPanel = ({
 
 	return (
 		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-md">
-			<div className="bg-surface border border-border rounded-brand p-lg w-full max-w-md">
+			<div className="bg-surface border border-border rounded-brand p-lg w-full max-w-[28rem]">
 				<div className="flex items-center justify-between mb-md">
 					<h3 className="text-lg font-semibold">{task ? 'Edit Task' : 'Add Task'}</h3>
 					<button
@@ -80,7 +80,7 @@ export const TaskEditPanel = ({
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							required
-							className="bg-bg border border-border rounded-brand p-sm text-text"
+							className="w-full bg-bg border border-border rounded-brand p-sm text-text"
 						/>
 					</label>
 
@@ -90,7 +90,7 @@ export const TaskEditPanel = ({
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							rows={3}
-							className="bg-bg border border-border rounded-brand p-sm text-text"
+							className="w-full bg-bg border border-border rounded-brand p-sm text-text"
 						/>
 					</label>
 
@@ -100,7 +100,7 @@ export const TaskEditPanel = ({
 							value={questions}
 							onChange={(e) => setQuestions(e.target.value)}
 							rows={2}
-							className="bg-bg border border-border rounded-brand p-sm text-text"
+							className="w-full bg-bg border border-border rounded-brand p-sm text-text"
 						/>
 					</label>
 
@@ -109,7 +109,7 @@ export const TaskEditPanel = ({
 						<select
 							value={status}
 							onChange={(e) => setStatus(e.target.value as TaskStatusT)}
-							className="bg-bg border border-border rounded-brand p-sm text-text"
+							className="w-full bg-bg border border-border rounded-brand p-sm text-text"
 						>
 							{STATUS_OPTIONS.map((option) => (
 								<option key={option.value} value={option.value}>
