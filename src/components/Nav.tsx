@@ -2,12 +2,13 @@ import React from 'react';
 import { Link, useRoute } from 'wouter';
 import { toolRegistry } from '../routes/toolRegistry';
 
-/** Navigation bar component with links to all tools. */
+/** Breadcrumb-style navigation listing the registered tool pages beside the site title. */
 export const Nav = (): React.ReactElement => {
+	const entries = Object.entries(toolRegistry);
+
 	return (
-		<nav className="flex flex-wrap items-center gap-6 px-4 py-3 border-t border-gray-200">
-			<NavLink href="/" label="Home" />
-			{Object.entries(toolRegistry).map(([slug, entry]) => (
+		<nav className="flex flex-wrap items-center gap-xs text-sm font-body">
+			{entries.map(([slug, entry]) => (
 				<NavLink key={slug} href={`/tools/${slug}`} label={entry.label} />
 			))}
 		</nav>
@@ -21,15 +22,17 @@ interface NavLinkProps {
 	label: string;
 }
 
-/** Individual navigation link with active state highlighting. */
+/** Individual nav link — active state is a left accent border with a tinted background. */
 const NavLink = ({ href, label }: NavLinkProps): React.ReactElement => {
 	const [isActive] = useRoute(href);
 
 	return (
 		<Link
 			href={href}
-			className={`no-underline font-medium transition-colors duration-200 ${
-				isActive ? 'text-blue-600 underline font-bold' : 'text-gray-700 hover:text-blue-500'
+			className={`no-underline uppercase tracking-wide border-l-2 px-sm transition-colors duration-200 ${
+				isActive
+					? 'border-accent bg-accent/10 text-accent font-semibold'
+					: 'border-transparent text-text-muted hover:text-accent hover:bg-accent/5'
 			}`}
 		>
 			{label}
