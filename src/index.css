@@ -23,6 +23,21 @@
 	--color-danger: #e74c3c; /* alizarin red — destructive actions, matches the flat-ui palette */
 	--color-danger-hover: #c0392b; /* pomegranate — hover/pressed danger states */
 
+	/* Categorical chart series (pie/bar/line identity). Fixed order — never cycled or
+	   reassigned per-render, so a category keeps its color across the whole app. Validated
+	   against this surface (--color-surface #34495e, dark mode): lightness band, chroma
+	   floor, and CVD separation all PASS (worst adjacent ΔE 8.4); contrast vs surface WARNs
+	   below 3:1 for most slots, so every series that uses these MUST ship direct labels
+	   or a legend — never color alone. A 7th+ category folds into series-other, not a new
+	   generated hue. */
+	--color-series-1: #3987e5; /* blue */
+	--color-series-2: #d95926; /* orange */
+	--color-series-3: #199e70; /* aqua */
+	--color-series-4: #c98500; /* yellow */
+	--color-series-5: #d55181; /* magenta */
+	--color-series-6: #008300; /* green */
+	--color-series-other: #6b7f8f; /* muted blue-gray — residual "Other" bucket, not an identity slot */
+
 	--font-heading: 'Departure Mono', 'JetBrains Mono', monospace;
 	--font-body: 'JetBrains Mono', monospace;
 	--font-mono: 'JetBrains Mono', monospace; /* same as body — one font family to load */

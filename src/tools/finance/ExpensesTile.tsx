@@ -1,22 +1,16 @@
-import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trash } from '@phosphor-icons/react';
 import {
 	createExpenseDraft,
 	DEFAULT_CURRENCY,
-	ExpenseDraftT,
 	formatCurrencyAmount,
 	formatMinorUnitsAsDecimalString,
-	normalizeTags,
 	parseAmountToMinorUnits,
 } from './expenseModel';
 import { convertMinorUnits } from './exchangeRates';
 import { useFinanceFilters } from './financeFiltersContext';
-
-/** Row in component state with currency tracking. */
-interface ExpenseRow extends ExpenseDraftT {
-	/** Currency code for this expense. */
-	currency: string;
-}
+import { useExpenses } from './expensesContext';
+import { isWithinDateRange } from './insightsModel';
 
 /** Strips everything but digits and a single decimal point from an amount input. */
 const filterAmountInput = (value: string): string => {
@@ -25,30 +19,6 @@ const filterAmountInput = (value: string): string => {
 	if (firstDot === -1) return digitsAndDot;
 	return digitsAndDot.slice(0, firstDot + 1) + digitsAndDot.slice(firstDot + 1).replace(/\./g, '');
 };
-
-const INITIAL_ROWS: ExpenseRow[] = [
-	{
-		...createExpenseDraft({ date: '2024-08-01', location: "Trader Joe's" }),
-		amountInput: '54.20',
-		paymentType: 'Debit',
-		tags: ['Groceries'],
-		currency: DEFAULT_CURRENCY,
-	},
-	{
-		...createExpenseDraft({ date: '2024-08-03', location: 'Metro Transit' }),
-		amountInput: '12.00',
-		paymentType: 'Card',
-		tags: ['Commute'],
-		currency: DEFAULT_CURRENCY,
-	},
-	{
-		...createExpenseDraft({ date: '2024-08-05', location: 'Comcast' }),
-		amountInput: '89.99',
-		paymentType: 'Auto-pay',
-		tags: ['Bills'],
-		currency: DEFAULT_CURRENCY,
-	},
-];
 
 type SortKey = 'date' | 'amount' | 'location' | 'paymentType';
 type SortDirection = 'asc' | 'desc';
@@ -59,54 +29,6 @@ interface SortState {
 	/** Sort direction for that column. */
 	direction: SortDirection;
 }
-
-type RowAction =
-	| { type: 'add'; seed?: { date?: string; location?: string }; draft?: ExpenseRow }
-	| { type: 'update'; id: string; patch: Partial<ExpenseRow> }
-	| { type: 'addTag'; id: string; tag: string }
-	| { type: 'removeTag'; id: string; tag: string }
-	| { type: 'remove'; id: string };
-
-/** Reducer function for row state mutations. */
-const rowsReducer = (state: ExpenseRow[], action: RowAction): ExpenseRow[] => {
-	switch (action.type) {
-		case 'add': {
-			if (action.draft) {
-				return [...state, action.draft];
-			}
-			const newDraft = createExpenseDraft(action.seed);
-			return [
-				...state,
-				{
-					...newDraft,
-					currency: DEFAULT_CURRENCY,
-				},
-			];
-		}
-		case 'update': {
-			return state.map((row) => (row.id === action.id ? { ...row, ...action.patch } : row));
-		}
-		case 'addTag': {
-			return state.map((row) => {
-				if (row.id === action.id) {
-					const normalized = normalizeTags([...row.tags, action.tag]);
-					return { ...row, tags: normalized };
-				}
-				return row;
-			});
-		}
-		case 'removeTag': {
-			return state.map((row) =>
-				row.id === action.id
-					? { ...row, tags: row.tags.filter((existing) => existing !== action.tag) }
-					: row
-			);
-		}
-		case 'remove': {
-			return state.filter((row) => row.id !== action.id);
-		}
-	}
-};
 
 interface SortableHeaderProps {
 	/** Column this header sorts by. */
@@ -220,7 +142,7 @@ const RowTags = ({ tags, onAdd, onRemove }: RowTagsProps): React.ReactElement =>
 /** Expenses tile content — an editable amount/location/payment-type table with per-row tags. */
 export const ExpensesTile = (): React.ReactElement => {
 	const { currency: displayCurrency, dateRange } = useFinanceFilters();
-	const [rows, dispatch] = useReducer(rowsReducer, INITIAL_ROWS);
+	const { rows, dispatch } = useExpenses();
 	const [focusTarget, setFocusTarget] = useState<{ rowId: string; field: 'date' | 'location' }>();
 	const [sort, setSort] = useState<SortState>();
 	const fieldInputs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -266,16 +188,10 @@ export const ExpensesTile = (): React.ReactElement => {
 	};
 
 	// Rows with no date yet (still being drafted) are always shown, never hidden by the range.
-	const visibleRows = useMemo(() => {
-		if (!dateRange.start && !dateRange.end) return rows;
-
-		return rows.filter((row) => {
-			if (!row.date) return true;
-			if (dateRange.start && row.date < dateRange.start) return false;
-			if (dateRange.end && row.date > dateRange.end) return false;
-			return true;
-		});
-	}, [rows, dateRange]);
+	const visibleRows = useMemo(
+		() => rows.filter((row) => isWithinDateRange(row.date, dateRange.start, dateRange.end)),
+		[rows, dateRange]
+	);
 
 	const sortedRows = useMemo(() => {
 		if (!sort) return visibleRows;

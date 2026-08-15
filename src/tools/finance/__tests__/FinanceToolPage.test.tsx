@@ -12,6 +12,15 @@ describe('FinanceToolPage', () => {
 		expect(screen.getByText('Liabilities')).toBeInTheDocument();
 	});
 
+	it('renders the Insights tile with its three chart sections', () => {
+		render(<FinanceToolPage />);
+
+		expect(screen.getByText('Insights')).toBeInTheDocument();
+		expect(screen.getByText('By tag')).toBeInTheDocument();
+		expect(screen.getByText('By day')).toBeInTheDocument();
+		expect(screen.getByText('Cumulative')).toBeInTheDocument();
+	});
+
 	it('renders the currency swapper in the toolbar, defaulted to USD', () => {
 		render(<FinanceToolPage />);
 

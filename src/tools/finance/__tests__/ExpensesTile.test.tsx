@@ -3,15 +3,18 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ExpensesTile } from '../ExpensesTile';
 import { FinanceFiltersProvider } from '../financeFiltersContext';
+import { ExpensesProvider } from '../expensesContext';
 import type { DateRangeValue } from '../../../components/GlobalDateFilter';
 
-/** Renders ExpensesTile inside the provider it requires, optionally with non-default filters. */
+/** Renders ExpensesTile inside the providers it requires, optionally with non-default filters. */
 const renderExpensesTile = (
 	providerProps: { initialCurrency?: string; initialDateRange?: DateRangeValue } = {}
 ): ReturnType<typeof render> =>
 	render(
 		<FinanceFiltersProvider {...providerProps}>
-			<ExpensesTile />
+			<ExpensesProvider>
+				<ExpensesTile />
+			</ExpensesProvider>
 		</FinanceFiltersProvider>
 	);
 
