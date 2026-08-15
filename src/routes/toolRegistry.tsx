@@ -16,4 +16,10 @@ export const toolRegistry: Record<string, ToolRegistryEntry> = {
 			import('../tools/example/ExampleToolPage').then((m) => ({ default: m.ExampleToolPage }))
 		),
 	},
+	finance: {
+		label: 'Finance',
+		component: lazy(() =>
+			import('../tools/finance/FinanceToolPage').then((m) => ({ default: m.FinanceToolPage }))
+		),
+	},
 };
