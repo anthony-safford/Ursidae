@@ -181,6 +181,29 @@ describe('tasksRoutes', () => {
 		expect(response.json().type).toBe('blocks');
 	});
 
+	it('POST /api/tasks/links rejects a duplicate link with the same source, target, and type', async () => {
+		const a = await app.inject({ method: 'POST', url: '/api/tasks', payload: { title: 'A' } });
+		const b = await app.inject({ method: 'POST', url: '/api/tasks', payload: { title: 'B' } });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const sourceTaskId = a.json().id as number;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const targetTaskId = b.json().id as number;
+
+		const first = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/links',
+			payload: { sourceTaskId, targetTaskId, type: 'blocks' },
+		});
+		expect(first.statusCode).toBe(201);
+
+		const duplicate = await app.inject({
+			method: 'POST',
+			url: '/api/tasks/links',
+			payload: { sourceTaskId, targetTaskId, type: 'blocks' },
+		});
+		expect(duplicate.statusCode).toBe(400);
+	});
+
 	it('POST /api/tasks/links rejects a link where source equals target', async () => {
 		const a = await app.inject({ method: 'POST', url: '/api/tasks', payload: { title: 'A' } });
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

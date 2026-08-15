@@ -2,8 +2,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { TasksCanvas, tasksToNodes, tasksToEdges, persistTaskPosition } from '../TasksCanvas';
-import type { TaskQuestionT, TaskT } from '../tasksModel';
+import {
+	TasksCanvas,
+	tasksToNodes,
+	tasksToEdges,
+	linksToEdges,
+	persistTaskPosition,
+	isValidLinkConnection,
+	resolveConfirmedLink,
+} from '../TasksCanvas';
+import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from '../tasksModel';
 
 const baseTask: TaskT = {
 	id: 1,
@@ -32,6 +40,14 @@ const question: TaskQuestionT = {
 	createdAt: new Date().toISOString(),
 };
 
+const link: TaskLinkT = {
+	id: 1,
+	sourceTaskId: 1,
+	targetTaskId: 2,
+	type: 'blocks',
+	createdAt: new Date().toISOString(),
+};
+
 const noop = (): void => {
 	/* no-op */
 };
@@ -39,12 +55,15 @@ const noop = (): void => {
 interface RenderCanvasOverridesT {
 	tasks?: TaskT[];
 	questions?: TaskQuestionT[];
+	links?: TaskLinkT[];
 	onTaskUpdated?: (task: TaskT) => void;
 	onDeleteTask?: (id: number) => void;
 	onAddSubtask?: (parentId: number) => void;
 	onFieldChange?: (id: number, patch: Partial<TaskT>) => void;
 	onAddQuestion?: (taskId: number, text: string) => void;
 	onDeleteQuestion?: (id: number) => void;
+	onCreateLink?: (sourceTaskId: number, targetTaskId: number, type: TaskLinkTypeT) => void;
+	onDeleteLink?: (id: number) => void;
 }
 
 /** Renders TasksCanvas with sensible no-op defaults, so each test only spells out what it cares about. */
@@ -53,12 +72,15 @@ function renderCanvas(overrides: RenderCanvasOverridesT = {}): void {
 		<TasksCanvas
 			tasks={overrides.tasks ?? [baseTask]}
 			questions={overrides.questions ?? []}
+			links={overrides.links ?? []}
 			onTaskUpdated={overrides.onTaskUpdated ?? noop}
 			onDeleteTask={overrides.onDeleteTask ?? noop}
 			onAddSubtask={overrides.onAddSubtask ?? noop}
 			onFieldChange={overrides.onFieldChange ?? noop}
 			onAddQuestion={overrides.onAddQuestion ?? noop}
 			onDeleteQuestion={overrides.onDeleteQuestion ?? noop}
+			onCreateLink={overrides.onCreateLink ?? noop}
+			onDeleteLink={overrides.onDeleteLink ?? noop}
 		/>
 	);
 }
@@ -130,6 +152,60 @@ describe('tasksToEdges', () => {
 	});
 });
 
+describe('linksToEdges', () => {
+	it('maps a link to a deletable "link" edge anchored to the link handles', () => {
+		const onDeleteLink = vi.fn();
+		const edges = linksToEdges([link], onDeleteLink);
+
+		expect(edges).toEqual([
+			expect.objectContaining({
+				id: 'link-1',
+				type: 'link',
+				source: '1',
+				target: '2',
+				sourceHandle: 'link-source',
+				targetHandle: 'link-target',
+				data: { linkId: 1, onDelete: onDeleteLink },
+			}),
+		]);
+	});
+
+	it.each([
+		['blocks', 'var(--color-danger)'],
+		['related', 'var(--color-accent)'],
+		['order', 'var(--color-accent-hover)'],
+	] satisfies [TaskLinkTypeT, string][])('styles a %s link with %s', (type, color) => {
+		const edges = linksToEdges([{ ...link, type }], vi.fn());
+
+		expect(edges[0]?.style?.stroke).toBe(color);
+	});
+});
+
+describe('isValidLinkConnection', () => {
+	it('rejects a connection where source equals target', () => {
+		expect(isValidLinkConnection({ source: '1', target: '1' })).toBe(false);
+	});
+
+	it('accepts a connection between two different tasks', () => {
+		expect(isValidLinkConnection({ source: '1', target: '2' })).toBe(true);
+	});
+});
+
+describe('resolveConfirmedLink', () => {
+	it('returns undefined when there is no pending connection', () => {
+		expect(resolveConfirmedLink(undefined, 'related')).toBeUndefined();
+	});
+
+	it('attaches the chosen type to the pending connection', () => {
+		const pending = { sourceTaskId: 1, targetTaskId: 2 };
+		expect(resolveConfirmedLink(pending, 'blocks')).toEqual({
+			sourceTaskId: 1,
+			targetTaskId: 2,
+			type: 'blocks',
+		});
+	});
+});
+
 describe('persistTaskPosition', () => {
 	it('PATCHes the new position and calls onTaskUpdated with the response', async () => {
 		let capturedBody: unknown;
@@ -184,6 +260,17 @@ describe('TasksCanvas', () => {
 		fireEvent.blur(titleInput);
 
 		expect(onFieldChange).toHaveBeenCalledWith(1, { title: 'Write the final report' });
+	});
+
+	it('commits a description edit via onFieldChange when the description textarea is blurred', () => {
+		const onFieldChange = vi.fn();
+		renderCanvas({ onFieldChange });
+
+		const descriptionInput = screen.getByLabelText('Description for Write the report');
+		fireEvent.change(descriptionInput, { target: { value: 'Updated notes' } });
+		fireEvent.blur(descriptionInput);
+
+		expect(onFieldChange).toHaveBeenCalledWith(1, { description: 'Updated notes' });
 	});
 
 	it('does not persist an emptied title', () => {
@@ -276,4 +363,8 @@ describe('TasksCanvas', () => {
 
 		expect(onAddQuestion).not.toHaveBeenCalled();
 	});
+
+	// Rendering an actual link edge (and its delete button) requires React Flow to have measured
+	// both endpoint nodes, which never happens under this project's jsdom ResizeObserver mock —
+	// see the comment in LinkEdge.test.tsx, which covers the delete button directly instead.
 });

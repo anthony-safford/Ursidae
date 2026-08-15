@@ -3,8 +3,18 @@ import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { Plus, Trash, X } from '@phosphor-icons/react';
 import { TASK_STATUS_OPTIONS, type TaskQuestionT, type TaskT } from './tasksModel';
 
-/** Hidden, non-interactive: only anchors auto-drawn hierarchy edges. Draggable connect handles land in #43. */
+/** Hidden, non-interactive: only anchors auto-drawn hierarchy edges. */
 const hiddenHandleStyle: React.CSSProperties = { opacity: 0, pointerEvents: 'none' };
+
+/** Drag-to-connect handles for links; sized/colored via inline style so they win over React Flow's
+ * own handle stylesheet, faded in only on card hover via the `group`/`group-hover` className. */
+const linkHandleStyle: React.CSSProperties = {
+	width: 10,
+	height: 10,
+	background: 'var(--color-surface)',
+	border: '2px solid var(--color-accent)',
+};
+const linkHandleClassName = 'opacity-0 transition-opacity group-hover:opacity-100';
 
 export type TaskNodeT = Node<
 	{
@@ -65,7 +75,7 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 
 	return (
 		<div
-			className={`${isSubtask ? 'w-64 p-sm' : 'w-80 p-md'} flex flex-col gap-xs bg-surface border border-border rounded-brand cursor-grab active:cursor-grabbing`}
+			className={`${isSubtask ? 'w-64 p-sm' : 'w-80 p-md'} group flex flex-col gap-xs bg-surface border border-border rounded-brand cursor-grab active:cursor-grabbing`}
 		>
 			<Handle
 				type="target"
@@ -78,6 +88,22 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 				position={Position.Bottom}
 				isConnectable={false}
 				style={hiddenHandleStyle}
+			/>
+			<Handle
+				type="target"
+				position={Position.Left}
+				id="link-target"
+				style={linkHandleStyle}
+				className={linkHandleClassName}
+				aria-label={`Link target for ${task.title}`}
+			/>
+			<Handle
+				type="source"
+				position={Position.Right}
+				id="link-source"
+				style={linkHandleStyle}
+				className={linkHandleClassName}
+				aria-label={`Link source for ${task.title}`}
 			/>
 
 			<div className="flex items-center gap-xs">

@@ -1,35 +1,44 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+	createTaskLink,
 	createTaskQuestion,
 	deleteTask,
+	deleteTaskLink,
 	deleteTaskQuestion,
+	getTaskLinks,
 	getTaskQuestions,
 	getTasks,
 	updateTask,
 } from './tasksApi';
 import { TasksCanvas } from './TasksCanvas';
 import { TaskEditPanel } from './TaskEditPanel';
-import type { TaskQuestionT, TaskT } from './tasksModel';
+import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from './tasksModel';
 
 /** Sentinel distinguishing "creating a new task" from no panel being open. */
 const NEW_TASK = Symbol('new-task');
 
 /**
- * Tasks tool page: a freeform canvas of persisted tasks, with create/delete and sub-tasks.
- * Editing happens inline on each card; relationship links land in a later feature of this epic.
+ * Tasks tool page: a freeform canvas of persisted tasks, with create/delete, sub-tasks, and
+ * relationship links. Editing happens inline on each card.
  */
 export const TasksToolPage = (): React.ReactElement => {
 	const [tasks, setTasks] = useState<TaskT[] | undefined>();
 	const [questions, setQuestions] = useState<TaskQuestionT[] | undefined>();
+	const [links, setLinks] = useState<TaskLinkT[] | undefined>();
 	const [editing, setEditing] = useState<typeof NEW_TASK | undefined>();
 	const [newTaskParent, setNewTaskParent] = useState<TaskT | undefined>();
 
 	useEffect(() => {
 		const fetchAll = async (): Promise<void> => {
 			try {
-				const [taskData, questionData] = await Promise.all([getTasks(), getTaskQuestions()]);
+				const [taskData, questionData, linkData] = await Promise.all([
+					getTasks(),
+					getTaskQuestions(),
+					getTaskLinks(),
+				]);
 				setTasks(taskData);
 				setQuestions(questionData);
+				setLinks(linkData);
 			} catch (error) {
 				console.error('Failed to fetch tasks:', error);
 			}
@@ -82,6 +91,11 @@ export const TasksToolPage = (): React.ReactElement => {
 			);
 			setTasks((prev) => prev?.filter((task) => !removedIds.has(task.id)));
 			setQuestions((prev) => prev?.filter((question) => !removedIds.has(question.taskId)));
+			setLinks((prev) =>
+				prev?.filter(
+					(link) => !removedIds.has(link.sourceTaskId) && !removedIds.has(link.targetTaskId)
+				)
+			);
 			deleteTask(id).catch((error: unknown) => {
 				console.error('Failed to delete task:', error);
 			});
@@ -106,6 +120,26 @@ export const TasksToolPage = (): React.ReactElement => {
 		});
 	}, []);
 
+	const handleCreateLink = useCallback(
+		(sourceTaskId: number, targetTaskId: number, type: TaskLinkTypeT) => {
+			createTaskLink({ sourceTaskId, targetTaskId, type })
+				.then((link) => {
+					setLinks((prev) => [...(prev ?? []), link]);
+				})
+				.catch((error: unknown) => {
+					console.error('Failed to create link:', error);
+				});
+		},
+		[]
+	);
+
+	const handleDeleteLink = useCallback((id: number) => {
+		setLinks((prev) => prev?.filter((link) => link.id !== id));
+		deleteTaskLink(id).catch((error: unknown) => {
+			console.error('Failed to delete link:', error);
+		});
+	}, []);
+
 	return (
 		<div className="p-lg">
 			<h2 className="text-2xl font-bold">Tasks</h2>
@@ -114,7 +148,7 @@ export const TasksToolPage = (): React.ReactElement => {
 			</p>
 
 			<div className="mt-lg">
-				{tasks === undefined || questions === undefined ? (
+				{tasks === undefined || questions === undefined || links === undefined ? (
 					<p className="text-text-muted">Loading...</p>
 				) : (
 					<>
@@ -137,12 +171,15 @@ export const TasksToolPage = (): React.ReactElement => {
 							<TasksCanvas
 								tasks={tasks}
 								questions={questions}
+								links={links}
 								onTaskUpdated={handleTaskUpdated}
 								onDeleteTask={handleDeleteTask}
 								onAddSubtask={handleAddSubtask}
 								onFieldChange={handleFieldChange}
 								onAddQuestion={handleAddQuestion}
 								onDeleteQuestion={handleDeleteQuestion}
+								onCreateLink={handleCreateLink}
+								onDeleteLink={handleDeleteLink}
 							/>
 						)}
 					</>

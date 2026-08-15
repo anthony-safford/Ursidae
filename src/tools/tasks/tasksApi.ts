@@ -1,4 +1,4 @@
-import type { TaskQuestionT, TaskT } from './tasksModel';
+import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from './tasksModel';
 
 export interface CreateTaskInputT {
 	title: string;
@@ -21,6 +21,12 @@ export interface UpdateTaskInputT {
 export interface CreateTaskQuestionInputT {
 	taskId: number;
 	text: string;
+}
+
+export interface CreateTaskLinkInputT {
+	sourceTaskId: number;
+	targetTaskId: number;
+	type: TaskLinkTypeT;
 }
 
 /** Fetches all tasks. */
@@ -76,4 +82,26 @@ export async function createTaskQuestion(input: CreateTaskQuestionInputT): Promi
 /** Deletes a question. */
 export async function deleteTaskQuestion(id: number): Promise<void> {
 	await fetch(`/api/tasks/questions/${id}`, { method: 'DELETE' });
+}
+
+/** Fetches all task links. */
+export async function getTaskLinks(): Promise<TaskLinkT[]> {
+	const response = await fetch('/api/tasks/links');
+	return (await response.json()) as TaskLinkT[];
+}
+
+/** Creates a relationship link between two tasks. */
+export async function createTaskLink(input: CreateTaskLinkInputT): Promise<TaskLinkT> {
+	const response = await fetch('/api/tasks/links', {
+		method: 'POST',
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(input),
+	});
+	return (await response.json()) as TaskLinkT;
+}
+
+/** Deletes a link. */
+export async function deleteTaskLink(id: number): Promise<void> {
+	await fetch(`/api/tasks/links/${id}`, { method: 'DELETE' });
 }

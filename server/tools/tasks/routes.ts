@@ -1,6 +1,6 @@
 import { type FastifyPluginCallback } from 'fastify';
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { tasks, taskLinks, taskQuestions } from './db/schema.js';
 import { getTasksDb } from './db/connection.js';
 
@@ -169,9 +169,28 @@ export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify,
 			});
 		}
 
+		const linkType = type ?? 'related';
+		const existingLink = db
+			.select()
+			.from(taskLinks)
+			.where(
+				and(
+					eq(taskLinks.sourceTaskId, sourceTaskId),
+					eq(taskLinks.targetTaskId, targetTaskId),
+					eq(taskLinks.type, linkType)
+				)
+			)
+			.get();
+
+		if (existingLink) {
+			return reply.status(400).send({
+				error: { code: 'VALIDATION_ERROR', message: 'This link already exists' },
+			});
+		}
+
 		const newLink = db
 			.insert(taskLinks)
-			.values({ sourceTaskId, targetTaskId, type })
+			.values({ sourceTaskId, targetTaskId, type: linkType })
 			.returning()
 			.get();
 

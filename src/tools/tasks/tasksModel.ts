@@ -25,3 +25,20 @@ export interface TaskQuestionT {
 	text: string;
 	createdAt: string;
 }
+
+export type TaskLinkTypeT = 'blocks' | 'related' | 'order';
+
+/** Human-readable labels for each link type. */
+export const TASK_LINK_TYPE_OPTIONS: { value: TaskLinkTypeT; label: string }[] = [
+	{ value: 'blocks', label: 'Blocks' },
+	{ value: 'related', label: 'Related' },
+	{ value: 'order', label: 'Order' },
+];
+
+export interface TaskLinkT {
+	id: number;
+	sourceTaskId: number;
+	targetTaskId: number;
+	type: TaskLinkTypeT;
+	createdAt: string;
+}

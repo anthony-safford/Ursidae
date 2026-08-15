@@ -18,8 +18,11 @@ const existingTask = {
 };
 
 beforeEach(() => {
-	// Default: no questions unless a test overrides it. TasksToolPage always fetches both on mount.
-	server.use(http.get('/api/tasks/questions', () => HttpResponse.json([])));
+	// Default: no questions/links unless a test overrides them. TasksToolPage always fetches all three on mount.
+	server.use(
+		http.get('/api/tasks/questions', () => HttpResponse.json([])),
+		http.get('/api/tasks/links', () => HttpResponse.json([]))
+	);
 });
 
 describe('TasksToolPage', () => {
@@ -249,6 +252,11 @@ describe('TasksToolPage', () => {
 			expect(screen.queryByText('Who owns the budget?')).not.toBeInTheDocument();
 		});
 	});
+
+	// Link edges (and their delete buttons) never actually render under this project's jsdom
+	// ResizeObserver mock — React Flow only draws an edge once it's measured both endpoint nodes.
+	// LinkEdge.test.tsx covers the delete button directly instead; link creation/deletion/cascade
+	// are verified manually in the browser (see the PR/session notes for the walkthrough).
 
 	it('deletes a parent task, and its sub-task and questions disappear from the canvas immediately', async () => {
 		const childTask = { ...existingTask, id: 2, parentId: 1, title: 'Draft the outline' };
