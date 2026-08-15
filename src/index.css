@@ -20,6 +20,8 @@
 	--color-text-muted: #ecf0f199; /* muted text — light color, reduced opacity */
 	--color-accent: #1abc9c; /* teal — primary actions, active states */
 	--color-accent-hover: #16a085; /* deeper teal — hover/pressed states */
+	--color-danger: #e74c3c; /* alizarin red — destructive actions, matches the flat-ui palette */
+	--color-danger-hover: #c0392b; /* pomegranate — hover/pressed danger states */
 
 	--font-heading: 'Departure Mono', 'JetBrains Mono', monospace;
 	--font-body: 'JetBrains Mono', monospace;

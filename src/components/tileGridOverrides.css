@@ -1,0 +1,22 @@
+/* Overrides for react-grid-layout/react-resizable's default styling to match design tokens.
+   Imported after their stylesheets in TileGrid.tsx so these rules win the cascade. */
+
+.react-resizable-handle {
+	background-image: none !important;
+	width: 12px;
+	height: 12px;
+	border-right: 2px solid var(--color-text-muted);
+	border-bottom: 2px solid var(--color-text-muted);
+	opacity: 0.7;
+}
+
+.react-resizable-handle:hover {
+	border-color: var(--color-accent);
+	opacity: 1;
+}
+
+.react-grid-placeholder {
+	background: color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
+	border: 1px dashed var(--color-accent);
+	border-radius: var(--radius-brand);
+}
