@@ -23,29 +23,29 @@ export const TasksToolPage = (): React.ReactElement => {
 	}, []);
 
 	return (
-		<div className="p-6">
+		<div className="p-lg">
 			<h2 className="text-2xl font-bold">Tasks</h2>
-			<p className="text-gray-500">
+			<p className="text-text-muted">
 				Unplanned, untracked tasks and sub-tasks. A freeform relationship canvas is coming soon.
 			</p>
 
-			<div className="mt-6">
+			<div className="mt-lg">
 				{tasks === undefined ? (
-					<p className="text-gray-500">Loading...</p>
+					<p className="text-text-muted">Loading...</p>
 				) : tasks.length === 0 ? (
-					<p className="text-gray-500">No tasks yet.</p>
+					<p className="text-text-muted">No tasks yet.</p>
 				) : (
-					<ul className="flex flex-col gap-3">
+					<ul className="flex flex-col gap-sm">
 						{tasks.map((task) => (
-							<li key={task.id} className="bg-white border border-gray-200 rounded-md p-4">
-								<div className="flex items-center justify-between gap-2">
+							<li key={task.id} className="bg-surface border border-border rounded-brand p-md">
+								<div className="flex items-center justify-between gap-sm">
 									<span className="font-semibold">{task.title}</span>
-									<span className="text-xs uppercase tracking-wide text-gray-500">
+									<span className="text-xs uppercase tracking-wide text-text-muted">
 										{task.status}
 									</span>
 								</div>
 								{task.description && (
-									<p className="text-sm text-gray-500 mt-1">{task.description}</p>
+									<p className="text-sm text-text-muted mt-xs">{task.description}</p>
 								)}
 							</li>
 						))}
