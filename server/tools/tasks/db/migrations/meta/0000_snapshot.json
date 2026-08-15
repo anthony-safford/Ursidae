@@ -1,0 +1,182 @@
+{
+	"version": "6",
+	"dialect": "sqlite",
+	"id": "bad02de9-21e4-488d-97e6-f35cf6e9d773",
+	"prevId": "00000000-0000-0000-0000-000000000000",
+	"tables": {
+		"task_links": {
+			"name": "task_links",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"sourceTaskId": {
+					"name": "sourceTaskId",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"targetTaskId": {
+					"name": "targetTaskId",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"type": {
+					"name": "type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "'related'"
+				},
+				"createdAt": {
+					"name": "createdAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"task_links_sourceTaskId_targetTaskId_type_unique": {
+					"name": "task_links_sourceTaskId_targetTaskId_type_unique",
+					"columns": ["sourceTaskId", "targetTaskId", "type"],
+					"isUnique": true
+				}
+			},
+			"foreignKeys": {
+				"task_links_sourceTaskId_tasks_id_fk": {
+					"name": "task_links_sourceTaskId_tasks_id_fk",
+					"tableFrom": "task_links",
+					"tableTo": "tasks",
+					"columnsFrom": ["sourceTaskId"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"task_links_targetTaskId_tasks_id_fk": {
+					"name": "task_links_targetTaskId_tasks_id_fk",
+					"tableFrom": "task_links",
+					"tableTo": "tasks",
+					"columnsFrom": ["targetTaskId"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"tasks": {
+			"name": "tasks",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"parentId": {
+					"name": "parentId",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"title": {
+					"name": "title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"questions": {
+					"name": "questions",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"status": {
+					"name": "status",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "'open'"
+				},
+				"positionX": {
+					"name": "positionX",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"positionY": {
+					"name": "positionY",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"createdAt": {
+					"name": "createdAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updatedAt": {
+					"name": "updatedAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"tasks_parentId_tasks_id_fk": {
+					"name": "tasks_parentId_tasks_id_fk",
+					"tableFrom": "tasks",
+					"tableTo": "tasks",
+					"columnsFrom": ["parentId"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		}
+	},
+	"views": {},
+	"enums": {},
+	"_meta": {
+		"schemas": {},
+		"tables": {},
+		"columns": {}
+	},
+	"internal": {
+		"indexes": {}
+	}
+}

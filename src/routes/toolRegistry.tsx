@@ -16,4 +16,10 @@ export const toolRegistry: Record<string, ToolRegistryEntry> = {
 			import('../tools/example/ExampleToolPage').then((m) => ({ default: m.ExampleToolPage }))
 		),
 	},
+	tasks: {
+		label: 'Tasks',
+		component: lazy(() =>
+			import('../tools/tasks/TasksToolPage').then((m) => ({ default: m.TasksToolPage }))
+		),
+	},
 };

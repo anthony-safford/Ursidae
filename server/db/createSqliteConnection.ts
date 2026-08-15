@@ -35,6 +35,7 @@ export function createSqliteConnection(
 	}
 
 	const sqliteDb = new Database(resolvedPath);
+	sqliteDb.pragma('foreign_keys = ON');
 	const db = drizzle(sqliteDb);
 
 	migrate(db, { migrationsFolder: options.migrationsFolder });

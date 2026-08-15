@@ -1,0 +1,177 @@
+import { type FastifyPluginCallback } from 'fastify';
+import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { eq } from 'drizzle-orm';
+import { tasks, taskLinks } from './db/schema.js';
+import { getTasksDb } from './db/connection.js';
+
+/**
+ * Configuration options for the tasks routes plugin.
+ */
+export interface TasksRoutesOptionsT {
+	/** Optional database connection; if omitted, uses the singleton connection. */
+	db?: BetterSQLite3Database;
+}
+
+interface CreateTaskBodyT {
+	title: string;
+	description?: string;
+	questions?: string;
+	status?: 'open' | 'in_progress' | 'done';
+	parentId?: number;
+	positionX?: number;
+	positionY?: number;
+}
+
+interface UpdateTaskBodyT {
+	title?: string;
+	description?: string;
+	questions?: string;
+	status?: 'open' | 'in_progress' | 'done';
+	parentId?: number;
+	positionX?: number;
+	positionY?: number;
+}
+
+interface CreateTaskLinkBodyT {
+	sourceTaskId: number;
+	targetTaskId: number;
+	type?: 'blocks' | 'related' | 'order';
+}
+
+// Fastify's typed-route generics require these exact PascalCase keys (Body/Params).
+/* eslint-disable @typescript-eslint/naming-convention */
+interface CreateTaskRouteT {
+	Body: CreateTaskBodyT;
+}
+interface UpdateTaskRouteT {
+	Params: { id: string };
+	Body: UpdateTaskBodyT;
+}
+interface TaskIdParamRouteT {
+	Params: { id: string };
+}
+interface CreateTaskLinkRouteT {
+	Body: CreateTaskLinkBodyT;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * Fastify plugin providing tasks tool CRUD endpoints for tasks and their relationship links.
+ */
+export const tasksRoutes: FastifyPluginCallback<TasksRoutesOptionsT> = (fastify, opts, done) => {
+	const db = opts.db ?? getTasksDb();
+
+	fastify.get('/', () => {
+		return db.select().from(tasks).all();
+	});
+
+	fastify.post<CreateTaskRouteT>('/', async (request, reply) => {
+		const { title, description, questions, status, parentId, positionX, positionY } = request.body;
+
+		if (!title) {
+			return reply
+				.status(400)
+				.send({ error: { code: 'VALIDATION_ERROR', message: 'title is required' } });
+		}
+
+		const newTask = db
+			.insert(tasks)
+			.values({ title, description, questions, status, parentId, positionX, positionY })
+			.returning()
+			.get();
+
+		return reply.status(201).send(newTask);
+	});
+
+	fastify.patch<UpdateTaskRouteT>('/:id', async (request, reply) => {
+		const id = Number(request.params.id);
+		const existing = db.select().from(tasks).where(eq(tasks.id, id)).get();
+
+		if (!existing) {
+			return reply
+				.status(404)
+				.send({ error: { code: 'NOT_FOUND', message: `Task ${id} not found` } });
+		}
+
+		const patched = db
+			.update(tasks)
+			.set({ ...request.body, updatedAt: new Date() })
+			.where(eq(tasks.id, id))
+			.returning()
+			.get();
+
+		return reply.send(patched);
+	});
+
+	fastify.delete<TaskIdParamRouteT>('/:id', async (request, reply) => {
+		const id = Number(request.params.id);
+		const existing = db.select().from(tasks).where(eq(tasks.id, id)).get();
+
+		if (!existing) {
+			return reply
+				.status(404)
+				.send({ error: { code: 'NOT_FOUND', message: `Task ${id} not found` } });
+		}
+
+		db.delete(tasks).where(eq(tasks.id, id)).run();
+
+		return reply.status(204).send();
+	});
+
+	fastify.get('/links', () => {
+		return db.select().from(taskLinks).all();
+	});
+
+	fastify.post<CreateTaskLinkRouteT>('/links', async (request, reply) => {
+		const { sourceTaskId, targetTaskId, type } = request.body;
+
+		if (!sourceTaskId || !targetTaskId) {
+			return reply.status(400).send({
+				error: { code: 'VALIDATION_ERROR', message: 'sourceTaskId and targetTaskId are required' },
+			});
+		}
+
+		if (sourceTaskId === targetTaskId) {
+			return reply.status(400).send({
+				error: { code: 'VALIDATION_ERROR', message: 'sourceTaskId and targetTaskId must differ' },
+			});
+		}
+
+		const source = db.select().from(tasks).where(eq(tasks.id, sourceTaskId)).get();
+		const target = db.select().from(tasks).where(eq(tasks.id, targetTaskId)).get();
+
+		if (!source || !target) {
+			return reply.status(400).send({
+				error: {
+					code: 'VALIDATION_ERROR',
+					message: 'sourceTaskId and targetTaskId must reference existing tasks',
+				},
+			});
+		}
+
+		const newLink = db
+			.insert(taskLinks)
+			.values({ sourceTaskId, targetTaskId, type })
+			.returning()
+			.get();
+
+		return reply.status(201).send(newLink);
+	});
+
+	fastify.delete<TaskIdParamRouteT>('/links/:id', async (request, reply) => {
+		const id = Number(request.params.id);
+		const existing = db.select().from(taskLinks).where(eq(taskLinks.id, id)).get();
+
+		if (!existing) {
+			return reply
+				.status(404)
+				.send({ error: { code: 'NOT_FOUND', message: `Task link ${id} not found` } });
+		}
+
+		db.delete(taskLinks).where(eq(taskLinks.id, id)).run();
+
+		return reply.status(204).send();
+	});
+
+	done();
+};
