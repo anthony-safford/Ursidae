@@ -11,6 +11,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"db:generate:example": "drizzle-kit generate --config server/tools/example/drizzle.config.ts",
+		"db:generate:tasks": "drizzle-kit generate --config server/tools/tasks/drizzle.config.ts",
 		"epic:new": "node scripts/epic-new.mjs",
 		"lint": "eslint src server --ext .ts,.tsx",
 		"lint:fix": "eslint src server --ext .ts,.tsx --fix",
@@ -34,6 +35,7 @@
 	"dependencies": {
 		"@fastify/static": "^10.1.3",
 		"@phosphor-icons/react": "^2.1.10",
+		"@xyflow/react": "^12.11.3",
 		"better-sqlite3": "^13.0.3",
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "^0.45.2",

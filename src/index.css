@@ -16,12 +16,16 @@
 	--color-bg: #2c3e50; /* off-dark navy — page background */
 	--color-surface: #34495e; /* header, nav, cards — one step lighter */
 	--color-border: #2c3e50; /* dividers between surface elements */
+	--color-border-lit: #47606e; /* card/panel edges sitting directly on --color-bg, where
+		--color-border would be invisible (they're the same navy) */
 	--color-text: #ffffff; /* primary text — full contrast, not softened */
 	--color-text-muted: #ecf0f199; /* muted text — light color, reduced opacity */
 	--color-accent: #1abc9c; /* teal — primary actions, active states */
 	--color-accent-hover: #16a085; /* deeper teal — hover/pressed states */
 	--color-danger: #e74c3c; /* alizarin red — destructive actions, matches the flat-ui palette */
 	--color-danger-hover: #c0392b; /* pomegranate — hover/pressed danger states */
+	--color-warning: #f39c12; /* orange — cautionary emphasis, matches the flat-ui palette */
+	--color-warning-hover: #e67e22; /* pumpkin — hover/pressed warning states */
 
 	--font-heading: 'Departure Mono', 'JetBrains Mono', monospace;
 	--font-body: 'JetBrains Mono', monospace;
@@ -38,6 +42,8 @@
 
 @layer base {
 	body {
+		color-scheme: dark; /* app is dark-only — keeps native popups (select, date picker, scrollbars)
+			in their dark UA styling instead of defaulting to light */
 		background-color: var(--color-bg);
 		color: var(--color-text);
 		font-family: var(--font-body);

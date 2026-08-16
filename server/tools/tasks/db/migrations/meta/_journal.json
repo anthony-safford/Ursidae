@@ -1,0 +1,20 @@
+{
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1786818782051,
+			"tag": "0000_omniscient_sabra",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1786828165582,
+			"tag": "0001_task_status_and_questions",
+			"breakpoints": true
+		}
+	]
+}

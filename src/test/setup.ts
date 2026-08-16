@@ -7,6 +7,16 @@ import { server } from '../mocks/server';
 // mirrors testing-library's existing script/style ignore list.
 configure({ defaultIgnore: 'script, style, [aria-hidden="true"]' });
 
+// jsdom doesn't implement ResizeObserver; @xyflow/react registers one per node (and reads the
+// event's `target` from it, not its dimensions, which jsdom can't report anyway) so it just
+// needs to exist and not throw.
+class ResizeObserverMockT {
+	observe(): void {}
+	unobserve(): void {}
+	disconnect(): void {}
+}
+globalThis.ResizeObserver = ResizeObserverMockT;
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
