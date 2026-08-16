@@ -43,3 +43,13 @@ edge deletion.
 
 Empty-canvas call-to-action, fit-view and minimap controls, a delete confirmation step, and
 visible error handling when a persistence call fails.
+
+## Card redesign #51
+
+A structured status-band-plus-footer card replacing the icon-heavy header: a status band that
+doubles as the card's drag handle (balanced with a Task/Sub-task label opposite the status), a
+labelled action footer instead of stacked icons, Enter-to-submit affordances, and free-space
+placement for newly created cards. Adds the `--color-border-lit` token the redesign needed (a
+surface sitting directly on `--color-bg` needs a lit edge, not `--color-border`) and
+`docs/design/` — the affordance-placement and keyboard-submission conventions the redesign
+established, generalized for every tool.
