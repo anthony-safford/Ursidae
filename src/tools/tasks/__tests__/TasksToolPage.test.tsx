@@ -63,6 +63,49 @@ describe('TasksToolPage', () => {
 		expect(screen.getByLabelText('Status for Write the report')).toHaveValue('discovery');
 	});
 
+	it('shows board stats in the header and isolates a stage on the canvas via its chip', async () => {
+		const user = userEvent.setup();
+		const researchTask = {
+			...existingTask,
+			id: 2,
+			title: 'Research the market',
+			status: 'research' as const,
+		};
+		const planTask = { ...existingTask, id: 3, title: 'Plan the launch', status: 'plan' as const };
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask, researchTask, planTask]))
+		);
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+		});
+
+		expect(screen.getByRole('button', { name: 'Show all tasks' })).toHaveTextContent('3');
+		expect(
+			screen.getByRole('button', { name: 'Isolate Discovery tasks on the canvas' })
+		).toHaveTextContent('1');
+		expect(
+			screen.getByRole('button', { name: 'Isolate Research tasks on the canvas' })
+		).toHaveTextContent('1');
+		expect(
+			screen.getByRole('button', { name: 'Isolate Plan tasks on the canvas' })
+		).toHaveTextContent('1');
+
+		await user.click(screen.getByRole('button', { name: 'Isolate Research tasks on the canvas' }));
+
+		expect(screen.getByLabelText('Title for Research the market')).toBeInTheDocument();
+		expect(screen.queryByLabelText('Title for Write the report')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Title for Plan the launch')).not.toBeInTheDocument();
+
+		// Clicking the already-active chip again clears the filter.
+		await user.click(screen.getByRole('button', { name: 'Isolate Research tasks on the canvas' }));
+
+		expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+		expect(screen.getByLabelText('Title for Plan the launch')).toBeInTheDocument();
+	});
+
 	it('creates a task via the Add Task panel and renders it on the canvas', async () => {
 		const user = userEvent.setup();
 		server.use(

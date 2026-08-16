@@ -14,8 +14,9 @@ import { TasksCanvas } from './TasksCanvas';
 import { TaskEditPanel } from './TaskEditPanel';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ErrorBanner } from './ErrorBanner';
+import { TasksBoardHeader, type TasksBoardStatsT } from './TasksBoardHeader';
 import { findFreeTaskPosition } from './taskLayout';
-import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from './tasksModel';
+import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskStatusT, TaskT } from './tasksModel';
 
 /** Sentinel distinguishing "creating a new task" from no panel being open. */
 const NEW_TASK = Symbol('new-task');
@@ -37,6 +38,7 @@ export const TasksToolPage = (): React.ReactElement => {
 	const [newTaskParent, setNewTaskParent] = useState<TaskT | undefined>();
 	const [confirmDeleteId, setConfirmDeleteId] = useState<number | undefined>();
 	const [error, setError] = useState<string | undefined>();
+	const [statusFilter, setStatusFilter] = useState<TaskStatusT | undefined>();
 
 	useEffect(() => {
 		const fetchAll = async (): Promise<void> => {
@@ -193,62 +195,76 @@ export const TasksToolPage = (): React.ReactElement => {
 		setError(message);
 	}, []);
 
+	// Isolates a single status on the canvas; clicking the active chip (or the "on board" total)
+	// clears the filter again, so a chip is always a toggle rather than a one-way drill-down.
+	const handleFilterChange = useCallback((status: TaskStatusT | undefined) => {
+		setStatusFilter((prev) => (status === undefined || prev === status ? undefined : status));
+	}, []);
+
+	const stats: TasksBoardStatsT | undefined =
+		tasks && questions && links
+			? {
+					total: tasks.length,
+					discovery: tasks.filter((task) => task.status === 'discovery').length,
+					research: tasks.filter((task) => task.status === 'research').length,
+					plan: tasks.filter((task) => task.status === 'plan').length,
+					questions: questions.length,
+					links: links.length,
+				}
+			: undefined;
+
+	const visibleTasks = statusFilter
+		? (tasks ?? []).filter((t) => t.status === statusFilter)
+		: tasks;
+
 	return (
 		<div className="p-lg">
-			<h2 className="text-2xl font-bold">Tasks</h2>
-			<p className="text-text-muted">
-				Unplanned, untracked tasks and sub-tasks, on a freeform relationship canvas.
-			</p>
-
 			{error && <ErrorBanner message={error} onDismiss={() => setError(undefined)} />}
 
-			<div className="mt-lg">
-				{tasks === undefined || questions === undefined || links === undefined ? (
-					<p className="text-text-muted">Loading...</p>
-				) : (
-					<>
-						<div className="flex justify-end mb-sm">
-							<button
-								type="button"
-								onClick={handleOpenAddTask}
-								className="rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200"
-							>
-								Add Task
-							</button>
-						</div>
+			<div>
+				<TasksBoardHeader
+					stats={stats}
+					statusFilter={statusFilter}
+					onFilterChange={handleFilterChange}
+					onAddTask={handleOpenAddTask}
+				/>
 
-						{tasks.length === 0 ? (
-							<div className="flex h-[70vh] flex-col items-center justify-center gap-sm rounded-brand border border-dashed border-border bg-surface p-xl text-center">
-								<p className="text-text-muted">No tasks yet.</p>
-								<p className="text-sm text-text-muted max-w-[24rem]">
-									Capture unplanned, untracked work as a card on the canvas — you can connect it to
-									other tasks and break it into sub-tasks later.
-								</p>
-								<button
-									type="button"
-									onClick={handleOpenAddTask}
-									className="mt-sm rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200"
-								>
-									Add your first task
-								</button>
-							</div>
-						) : (
-							<TasksCanvas
-								tasks={tasks}
-								questions={questions}
-								links={links}
-								onTaskUpdated={handleTaskUpdated}
-								onDeleteTask={handleRequestDeleteTask}
-								onAddSubtask={handleAddSubtask}
-								onFieldChange={handleFieldChange}
-								onAddQuestion={handleAddQuestion}
-								onDeleteQuestion={handleDeleteQuestion}
-								onCreateLink={handleCreateLink}
-								onDeleteLink={handleDeleteLink}
-								onError={handleCanvasError}
-							/>
-						)}
-					</>
+				{tasks === undefined || questions === undefined || links === undefined ? (
+					<p className="rounded-b-brand border border-t-0 border-border-lit bg-surface px-md py-sm text-text-muted">
+						Loading...
+					</p>
+				) : tasks.length === 0 ? (
+					<div className="flex h-[70vh] flex-col items-center justify-center gap-sm rounded-b-brand border border-t-0 border-dashed border-border bg-surface p-xl text-center">
+						<p className="text-text-muted">No tasks yet.</p>
+						<p className="text-sm text-text-muted max-w-[24rem]">
+							Capture unplanned, untracked work as a card on the canvas — you can connect it to
+							other tasks and break it into sub-tasks later.
+						</p>
+						<button
+							type="button"
+							onClick={handleOpenAddTask}
+							className="mt-sm rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200"
+						>
+							Add your first task
+						</button>
+					</div>
+				) : (
+					<div className="h-[70vh] rounded-b-brand border border-t-0 border-border-lit overflow-hidden">
+						<TasksCanvas
+							tasks={visibleTasks ?? []}
+							questions={questions}
+							links={links}
+							onTaskUpdated={handleTaskUpdated}
+							onDeleteTask={handleRequestDeleteTask}
+							onAddSubtask={handleAddSubtask}
+							onFieldChange={handleFieldChange}
+							onAddQuestion={handleAddQuestion}
+							onDeleteQuestion={handleDeleteQuestion}
+							onCreateLink={handleCreateLink}
+							onDeleteLink={handleDeleteLink}
+							onError={handleCanvasError}
+						/>
+					</div>
 				)}
 			</div>
 

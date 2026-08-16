@@ -278,7 +278,7 @@ export const TasksCanvas = ({
 	);
 
 	return (
-		<div className="h-[70vh] bg-bg border border-border-lit rounded-brand overflow-hidden">
+		<div className="h-full bg-bg overflow-hidden">
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}
