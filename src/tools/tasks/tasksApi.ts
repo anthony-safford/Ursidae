@@ -29,15 +29,27 @@ export interface CreateTaskLinkInputT {
 	type: TaskLinkTypeT;
 }
 
+/** Fetches, and throws with the API's own error message on a non-2xx response so callers'
+ * `.catch` blocks see real API failures (validation errors, 404s, ...), not just network drops. */
+async function fetchOrThrow(input: string, init?: RequestInit): Promise<Response> {
+	const response = await fetch(input, init);
+	if (!response.ok) {
+		const body = (await response.json().catch(() => undefined)) as
+			{ error?: { message?: string } } | undefined;
+		throw new Error(body?.error?.message ?? `Request failed with status ${response.status}`);
+	}
+	return response;
+}
+
 /** Fetches all tasks. */
 export async function getTasks(): Promise<TaskT[]> {
-	const response = await fetch('/api/tasks');
+	const response = await fetchOrThrow('/api/tasks');
 	return (await response.json()) as TaskT[];
 }
 
 /** Creates a task. */
 export async function createTask(input: CreateTaskInputT): Promise<TaskT> {
-	const response = await fetch('/api/tasks', {
+	const response = await fetchOrThrow('/api/tasks', {
 		method: 'POST',
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		headers: { 'Content-Type': 'application/json' },
@@ -48,7 +60,7 @@ export async function createTask(input: CreateTaskInputT): Promise<TaskT> {
 
 /** Updates a task's fields, e.g. its canvas position after a drag or an inline edit. */
 export async function updateTask(id: number, input: UpdateTaskInputT): Promise<TaskT> {
-	const response = await fetch(`/api/tasks/${id}`, {
+	const response = await fetchOrThrow(`/api/tasks/${id}`, {
 		method: 'PATCH',
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		headers: { 'Content-Type': 'application/json' },
@@ -59,18 +71,18 @@ export async function updateTask(id: number, input: UpdateTaskInputT): Promise<T
 
 /** Deletes a task. */
 export async function deleteTask(id: number): Promise<void> {
-	await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+	await fetchOrThrow(`/api/tasks/${id}`, { method: 'DELETE' });
 }
 
 /** Fetches all task questions. */
 export async function getTaskQuestions(): Promise<TaskQuestionT[]> {
-	const response = await fetch('/api/tasks/questions');
+	const response = await fetchOrThrow('/api/tasks/questions');
 	return (await response.json()) as TaskQuestionT[];
 }
 
 /** Creates a question on a task. */
 export async function createTaskQuestion(input: CreateTaskQuestionInputT): Promise<TaskQuestionT> {
-	const response = await fetch('/api/tasks/questions', {
+	const response = await fetchOrThrow('/api/tasks/questions', {
 		method: 'POST',
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		headers: { 'Content-Type': 'application/json' },
@@ -81,18 +93,18 @@ export async function createTaskQuestion(input: CreateTaskQuestionInputT): Promi
 
 /** Deletes a question. */
 export async function deleteTaskQuestion(id: number): Promise<void> {
-	await fetch(`/api/tasks/questions/${id}`, { method: 'DELETE' });
+	await fetchOrThrow(`/api/tasks/questions/${id}`, { method: 'DELETE' });
 }
 
 /** Fetches all task links. */
 export async function getTaskLinks(): Promise<TaskLinkT[]> {
-	const response = await fetch('/api/tasks/links');
+	const response = await fetchOrThrow('/api/tasks/links');
 	return (await response.json()) as TaskLinkT[];
 }
 
 /** Creates a relationship link between two tasks. */
 export async function createTaskLink(input: CreateTaskLinkInputT): Promise<TaskLinkT> {
-	const response = await fetch('/api/tasks/links', {
+	const response = await fetchOrThrow('/api/tasks/links', {
 		method: 'POST',
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		headers: { 'Content-Type': 'application/json' },
@@ -103,5 +115,5 @@ export async function createTaskLink(input: CreateTaskLinkInputT): Promise<TaskL
 
 /** Deletes a link. */
 export async function deleteTaskLink(id: number): Promise<void> {
-	await fetch(`/api/tasks/links/${id}`, { method: 'DELETE' });
+	await fetchOrThrow(`/api/tasks/links/${id}`, { method: 'DELETE' });
 }

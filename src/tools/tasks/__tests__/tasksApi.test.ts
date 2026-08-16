@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { createTaskLink, deleteTaskLink, getTaskLinks } from '../tasksApi';
+import { createTaskLink, deleteTaskLink, getTaskLinks, getTasks } from '../tasksApi';
 import type { TaskLinkT } from '../tasksModel';
 
 const link: TaskLinkT = {
@@ -46,5 +46,11 @@ describe('tasksApi links', () => {
 		await deleteTaskLink(1);
 
 		expect(requestedUrl).toContain('/api/tasks/links/1');
+	});
+
+	it('throws a generic message when a failed response has no parseable error body', async () => {
+		server.use(http.get('/api/tasks', () => new HttpResponse('not json', { status: 500 })));
+
+		await expect(getTasks()).rejects.toThrow('Request failed with status 500');
 	});
 });
