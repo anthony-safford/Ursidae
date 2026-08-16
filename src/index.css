@@ -22,6 +22,8 @@
 	--color-accent-hover: #16a085; /* deeper teal — hover/pressed states */
 	--color-danger: #e74c3c; /* alizarin red — destructive actions, matches the flat-ui palette */
 	--color-danger-hover: #c0392b; /* pomegranate — hover/pressed danger states */
+	--color-warning: #f39c12; /* orange — cautionary emphasis, matches the flat-ui palette */
+	--color-warning-hover: #e67e22; /* pumpkin — hover/pressed warning states */
 
 	--font-heading: 'Departure Mono', 'JetBrains Mono', monospace;
 	--font-body: 'JetBrains Mono', monospace;

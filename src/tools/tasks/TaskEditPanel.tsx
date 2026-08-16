@@ -12,6 +12,8 @@ interface TaskEditPanelProps {
 	onSaved: (task: TaskT) => void;
 	/** Called when the panel is dismissed without saving. */
 	onClose: () => void;
+	/** Called with a human-readable message if creation fails. */
+	onError: (message: string) => void;
 }
 
 /** Modal form for creating a new task or sub-task; editing happens inline on the card itself. */
@@ -20,6 +22,7 @@ export const TaskEditPanel = ({
 	initialPosition,
 	onSaved,
 	onClose,
+	onError,
 }: TaskEditPanelProps): React.ReactElement => {
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
@@ -45,6 +48,7 @@ export const TaskEditPanel = ({
 			})
 			.catch((error: unknown) => {
 				console.error('Failed to save task:', error);
+				onError(error instanceof Error ? error.message : 'Failed to save the task.');
 			})
 			.finally(() => {
 				setSaving(false);

@@ -64,6 +64,7 @@ interface RenderCanvasOverridesT {
 	onDeleteQuestion?: (id: number) => void;
 	onCreateLink?: (sourceTaskId: number, targetTaskId: number, type: TaskLinkTypeT) => void;
 	onDeleteLink?: (id: number) => void;
+	onError?: (message: string) => void;
 }
 
 /** Renders TasksCanvas with sensible no-op defaults, so each test only spells out what it cares about. */
@@ -81,6 +82,7 @@ function renderCanvas(overrides: RenderCanvasOverridesT = {}): void {
 			onDeleteQuestion={overrides.onDeleteQuestion ?? noop}
 			onCreateLink={overrides.onCreateLink ?? noop}
 			onDeleteLink={overrides.onDeleteLink ?? noop}
+			onError={overrides.onError ?? noop}
 		/>
 	);
 }
@@ -173,11 +175,19 @@ describe('linksToEdges', () => {
 	it.each([
 		['blocks', 'var(--color-danger)'],
 		['related', 'var(--color-accent)'],
-		['order', 'var(--color-accent-hover)'],
+		['order', 'var(--color-warning)'],
 	] satisfies [TaskLinkTypeT, string][])('styles a %s link with %s', (type, color) => {
 		const edges = linksToEdges([{ ...link, type }], vi.fn());
 
 		expect(edges[0]?.style?.stroke).toBe(color);
+	});
+
+	it('dashes an order link to distinguish it from a related link sharing the same color', () => {
+		const relatedEdges = linksToEdges([{ ...link, type: 'related' }], vi.fn());
+		const orderEdges = linksToEdges([{ ...link, type: 'order' }], vi.fn());
+
+		expect(relatedEdges[0]?.style?.strokeDasharray).toBeUndefined();
+		expect(orderEdges[0]?.style?.strokeDasharray).toBe('6 4');
 	});
 });
 
@@ -217,7 +227,7 @@ describe('persistTaskPosition', () => {
 		);
 
 		const onTaskUpdated = vi.fn();
-		await persistTaskPosition({ id: '1', position: { x: 120, y: 45 } }, onTaskUpdated);
+		await persistTaskPosition({ id: '1', position: { x: 120, y: 45 } }, onTaskUpdated, vi.fn());
 
 		expect(capturedBody).toEqual({ positionX: 120, positionY: 45 });
 		expect(onTaskUpdated).toHaveBeenCalledWith(
@@ -225,17 +235,31 @@ describe('persistTaskPosition', () => {
 		);
 	});
 
-	it('logs and does not throw when the PATCH request fails', async () => {
+	it('logs, calls onError, and does not throw when the PATCH request fails', async () => {
 		server.use(http.patch('/api/tasks/1', () => HttpResponse.error()));
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 		const onTaskUpdated = vi.fn();
+		const onError = vi.fn();
 		await expect(
-			persistTaskPosition({ id: '1', position: { x: 0, y: 0 } }, onTaskUpdated)
+			persistTaskPosition({ id: '1', position: { x: 0, y: 0 } }, onTaskUpdated, onError)
 		).resolves.toBeUndefined();
 
 		expect(onTaskUpdated).not.toHaveBeenCalled();
 		expect(consoleErrorSpy).toHaveBeenCalled();
+		expect(onError).toHaveBeenCalledWith(expect.any(String));
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('falls back to a generic message when the rejection is not an Error', async () => {
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce('connection reset');
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const onError = vi.fn();
+		await persistTaskPosition({ id: '1', position: { x: 0, y: 0 } }, vi.fn(), onError);
+
+		expect(onError).toHaveBeenCalledWith('Failed to save the new position.');
+		fetchSpy.mockRestore();
 		consoleErrorSpy.mockRestore();
 	});
 });
@@ -262,6 +286,15 @@ describe('TasksCanvas', () => {
 		expect(onFieldChange).toHaveBeenCalledWith(1, { title: 'Write the final report' });
 	});
 
+	it('does not call onFieldChange when the title is blurred unchanged', () => {
+		const onFieldChange = vi.fn();
+		renderCanvas({ onFieldChange });
+
+		fireEvent.blur(screen.getByLabelText('Title for Write the report'));
+
+		expect(onFieldChange).not.toHaveBeenCalled();
+	});
+
 	it('commits a description edit via onFieldChange when the description textarea is blurred', () => {
 		const onFieldChange = vi.fn();
 		renderCanvas({ onFieldChange });
@@ -271,6 +304,15 @@ describe('TasksCanvas', () => {
 		fireEvent.blur(descriptionInput);
 
 		expect(onFieldChange).toHaveBeenCalledWith(1, { description: 'Updated notes' });
+	});
+
+	it('does not call onFieldChange when a description-less sub-task is blurred unchanged', () => {
+		const onFieldChange = vi.fn();
+		renderCanvas({ tasks: [baseTask, subtask], onFieldChange });
+
+		fireEvent.blur(screen.getByLabelText('Description for Draft the outline'));
+
+		expect(onFieldChange).not.toHaveBeenCalled();
 	});
 
 	it('does not persist an emptied title', () => {
@@ -283,6 +325,17 @@ describe('TasksCanvas', () => {
 
 		expect(onFieldChange).not.toHaveBeenCalled();
 		expect(titleInput).toHaveValue('Write the report');
+	});
+
+	it('clears the description to null via onFieldChange when blurred empty', () => {
+		const onFieldChange = vi.fn();
+		renderCanvas({ onFieldChange });
+
+		const descriptionInput = screen.getByLabelText('Description for Write the report');
+		fireEvent.change(descriptionInput, { target: { value: '   ' } });
+		fireEvent.blur(descriptionInput);
+
+		expect(onFieldChange).toHaveBeenCalledWith(1, { description: null });
 	});
 
 	it('commits a status change via onFieldChange immediately on select', () => {
@@ -355,6 +408,17 @@ describe('TasksCanvas', () => {
 		expect(input).toHaveValue('');
 	});
 
+	it('does not submit a question on a non-Enter key', () => {
+		const onAddQuestion = vi.fn();
+		renderCanvas({ onAddQuestion });
+
+		const input = screen.getByLabelText('Add a question to Write the report');
+		fireEvent.change(input, { target: { value: 'Is legal sign-off needed?' } });
+		fireEvent.keyDown(input, { key: 'Tab' });
+
+		expect(onAddQuestion).not.toHaveBeenCalled();
+	});
+
 	it('does not call onAddQuestion when the question input is submitted empty', () => {
 		const onAddQuestion = vi.fn();
 		renderCanvas({ onAddQuestion });
@@ -362,6 +426,13 @@ describe('TasksCanvas', () => {
 		fireEvent.click(screen.getByTestId('add-question-1'));
 
 		expect(onAddQuestion).not.toHaveBeenCalled();
+	});
+
+	it('renders pan/zoom controls and a minimap', () => {
+		renderCanvas();
+
+		expect(screen.getByTestId('rf__controls')).toBeInTheDocument();
+		expect(screen.getByTestId('rf__minimap')).toBeInTheDocument();
 	});
 
 	// Rendering an actual link edge (and its delete button) requires React Flow to have measured

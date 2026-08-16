@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
 	ReactFlow,
 	Background,
+	Controls,
+	MiniMap,
+	Panel,
+	ConnectionMode,
 	useNodesState,
 	useEdgesState,
 	MarkerType,
@@ -19,13 +23,43 @@ import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from './tasksMode
 const nodeTypes = { task: TaskNode };
 const edgeTypes = { link: LinkEdge };
 
-/** Per-type edge color, reusing existing design tokens only — deliberately distinct from the
- * hierarchy edge's dashed, muted styling so structural and user-drawn edges never look alike. */
+/** Per-type edge color. `order` also gets a dash pattern on top of its own color — redundant
+ * encoding so the type still reads on a hover-sized edge or for colorblind users. */
 const LINK_TYPE_COLOR: Record<TaskLinkTypeT, string> = {
 	blocks: 'var(--color-danger)',
 	related: 'var(--color-accent)',
-	order: 'var(--color-accent-hover)',
+	order: 'var(--color-warning)',
 };
+
+const LINK_TYPE_DASH: Record<TaskLinkTypeT, string | undefined> = {
+	blocks: undefined,
+	related: undefined,
+	order: '6 4',
+};
+
+/** Legend rows, in the same order edges are visually distinguished: hierarchy first (it's not a
+ * TaskLinkTypeT, so it isn't in LINK_TYPE_COLOR), then the three link types. */
+const EDGE_LEGEND: { label: string; color: string; dashed: boolean }[] = [
+	{ label: 'Sub-task', color: 'var(--color-text-muted)', dashed: true },
+	{ label: 'Blocks', color: LINK_TYPE_COLOR.blocks, dashed: false },
+	{ label: 'Related', color: LINK_TYPE_COLOR.related, dashed: false },
+	{ label: 'Order', color: LINK_TYPE_COLOR.order, dashed: true },
+];
+
+/** Re-themes React Flow's Controls/MiniMap chrome with this app's own tokens via the CSS custom
+ * properties those components already read — their light-mode defaults are white-on-white
+ * against our dark surface otherwise. */
+const canvasThemeStyle = {
+	'--xy-controls-button-background-color': 'var(--color-surface)',
+	'--xy-controls-button-background-color-hover': 'var(--color-bg)',
+	'--xy-controls-button-color': 'var(--color-text-muted)',
+	'--xy-controls-button-color-hover': 'var(--color-accent)',
+	'--xy-controls-button-border-color': 'var(--color-border)',
+	'--xy-minimap-background-color': 'var(--color-surface)',
+	'--xy-minimap-mask-background-color': 'rgba(0, 0, 0, 0.4)',
+	'--xy-minimap-node-background-color': 'var(--color-accent)',
+	'--xy-attribution-background-color': 'var(--color-surface)',
+} as React.CSSProperties;
 
 interface TasksCanvasProps {
 	/** Tasks to render as nodes, positioned at their persisted x/y. */
@@ -53,6 +87,8 @@ interface TasksCanvasProps {
 	onCreateLink: (sourceTaskId: number, targetTaskId: number, type: TaskLinkTypeT) => void;
 	/** Called with a link's id when its delete button is clicked. */
 	onDeleteLink: (id: number) => void;
+	/** Called with a human-readable message when persisting a dragged position fails. */
+	onError: (message: string) => void;
 }
 
 /** Maps tasks to React Flow nodes positioned at their persisted x/y. */
@@ -104,7 +140,7 @@ export function linksToEdges(links: TaskLinkT[], onDeleteLink: (id: number) => v
 			target: String(link.targetTaskId),
 			sourceHandle: 'link-source',
 			targetHandle: 'link-target',
-			style: { stroke: color, strokeWidth: 2 },
+			style: { stroke: color, strokeWidth: 2, strokeDasharray: LINK_TYPE_DASH[link.type] },
 			markerEnd: { type: MarkerType.ArrowClosed, color },
 			data: { linkId: link.id, onDelete: onDeleteLink },
 		};
@@ -130,13 +166,15 @@ export function resolveConfirmedLink(
 /** Persists a node's post-drag position and notifies the caller with the updated task. */
 export function persistTaskPosition(
 	node: { id: string; position: { x: number; y: number } },
-	onTaskUpdated: (task: TaskT) => void
+	onTaskUpdated: (task: TaskT) => void,
+	onError: (message: string) => void
 ): Promise<void> {
 	const id = Number(node.id);
 	return updateTask(id, { positionX: node.position.x, positionY: node.position.y })
 		.then(onTaskUpdated)
 		.catch((error: unknown) => {
 			console.error('Failed to persist task position:', error);
+			onError(error instanceof Error ? error.message : 'Failed to save the new position.');
 		});
 }
 
@@ -153,6 +191,7 @@ export const TasksCanvas = ({
 	onDeleteQuestion,
 	onCreateLink,
 	onDeleteLink,
+	onError,
 }: TasksCanvasProps): React.ReactElement => {
 	const [nodes, setNodes, onNodesChange] = useNodesState<TaskNodeT>(
 		tasksToNodes(
@@ -202,9 +241,9 @@ export const TasksCanvas = ({
 
 	const handleNodeDragStop: OnNodeDrag<TaskNodeT> = useCallback(
 		(_event, node) => {
-			void persistTaskPosition(node, onTaskUpdated);
+			void persistTaskPosition(node, onTaskUpdated, onError);
 		},
-		[onTaskUpdated]
+		[onTaskUpdated, onError]
 	);
 
 	const handleConnect = useCallback((connection: Connection) => {
@@ -235,9 +274,34 @@ export const TasksCanvas = ({
 				onNodeDragStop={handleNodeDragStop}
 				onConnect={handleConnect}
 				isValidConnection={isValidLinkConnection}
+				connectionMode={ConnectionMode.Loose}
+				style={canvasThemeStyle}
+				attributionPosition="top-right"
+				className="[&_.react-flow__attribution]:!rounded-brand [&_.react-flow__attribution]:!border [&_.react-flow__attribution]:!border-border [&_.react-flow__attribution]:!px-sm [&_.react-flow__attribution]:!py-xs [&_.react-flow__attribution_a]:!text-text-muted"
 				fitView
 			>
 				<Background />
+				<Controls className="!rounded-brand !border !border-border !shadow-none overflow-hidden" />
+				<MiniMap pannable zoomable className="!rounded-brand !border !border-border" />
+				<Panel
+					position="top-left"
+					className="!rounded-brand !border !border-border !bg-surface !p-sm !text-xs !text-text-muted"
+				>
+					<ul className="flex flex-col gap-xs">
+						{EDGE_LEGEND.map((item) => (
+							<li key={item.label} className="flex items-center gap-xs">
+								<span
+									className="inline-block w-4 border-t-2"
+									style={{
+										borderColor: item.color,
+										borderStyle: item.dashed ? 'dashed' : 'solid',
+									}}
+								/>
+								{item.label}
+							</li>
+						))}
+					</ul>
+				</Panel>
 			</ReactFlow>
 			{pendingConnection && (
 				<LinkTypePicker

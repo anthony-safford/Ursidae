@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -20,7 +20,7 @@ const createdTask: TaskT = {
 
 describe('TaskEditPanel', () => {
 	it('renders "Add Task" with empty fields', () => {
-		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} />);
+		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} onError={vi.fn()} />);
 
 		expect(screen.getByRole('heading', { name: 'Add Task' })).toBeInTheDocument();
 		expect(screen.getByLabelText('Title')).toHaveValue('');
@@ -37,7 +37,7 @@ describe('TaskEditPanel', () => {
 		);
 
 		const onSaved = vi.fn();
-		render(<TaskEditPanel onSaved={onSaved} onClose={vi.fn()} />);
+		render(<TaskEditPanel onSaved={onSaved} onClose={vi.fn()} onError={vi.fn()} />);
 
 		await user.type(screen.getByLabelText('Title'), 'New task');
 		await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -64,7 +64,7 @@ describe('TaskEditPanel', () => {
 			})
 		);
 
-		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} />);
+		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} onError={vi.fn()} />);
 
 		await user.type(screen.getByLabelText('Title'), 'New task');
 		await user.type(screen.getByLabelText('Description'), 'Some details');
@@ -78,13 +78,14 @@ describe('TaskEditPanel', () => {
 		});
 	});
 
-	it('logs and does not throw when the POST request fails', async () => {
+	it('logs, calls onError, and does not throw when the POST request fails', async () => {
 		const user = userEvent.setup();
 		server.use(http.post('/api/tasks', () => HttpResponse.error()));
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 		const onSaved = vi.fn();
-		render(<TaskEditPanel onSaved={onSaved} onClose={vi.fn()} />);
+		const onError = vi.fn();
+		render(<TaskEditPanel onSaved={onSaved} onClose={vi.fn()} onError={onError} />);
 
 		await user.type(screen.getByLabelText('Title'), 'New task');
 		await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -93,7 +94,62 @@ describe('TaskEditPanel', () => {
 			expect(consoleErrorSpy).toHaveBeenCalled();
 		});
 		expect(onSaved).not.toHaveBeenCalled();
+		expect(onError).toHaveBeenCalledWith(expect.any(String));
 		consoleErrorSpy.mockRestore();
+	});
+
+	it('calls onError with the API-provided message when creation is rejected', async () => {
+		const user = userEvent.setup();
+		server.use(
+			http.post('/api/tasks', () =>
+				HttpResponse.json(
+					{ error: { code: 'VALIDATION_ERROR', message: 'title is required' } },
+					{ status: 400 }
+				)
+			)
+		);
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const onError = vi.fn();
+		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} onError={onError} />);
+
+		await user.type(screen.getByLabelText('Title'), 'New task');
+		await user.click(screen.getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => {
+			expect(onError).toHaveBeenCalledWith('title is required');
+		});
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('falls back to a generic message when the rejection is not an Error', async () => {
+		const user = userEvent.setup();
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce('connection reset');
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const onError = vi.fn();
+		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} onError={onError} />);
+
+		await user.type(screen.getByLabelText('Title'), 'New task');
+		await user.click(screen.getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => {
+			expect(onError).toHaveBeenCalledWith('Failed to save the task.');
+		});
+		fetchSpy.mockRestore();
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('does not submit when the title is blank, even if submitted directly', () => {
+		const onSaved = vi.fn();
+		const { container } = render(
+			<TaskEditPanel onSaved={onSaved} onClose={vi.fn()} onError={vi.fn()} />
+		);
+
+		const form = container.querySelector('form');
+		if (form) fireEvent.submit(form);
+
+		expect(onSaved).not.toHaveBeenCalled();
 	});
 
 	it('renders "Add Sub-task" and includes parentId/position when creating with a parentId', async () => {
@@ -115,6 +171,7 @@ describe('TaskEditPanel', () => {
 				initialPosition={{ x: 40, y: 80 }}
 				onSaved={vi.fn()}
 				onClose={vi.fn()}
+				onError={vi.fn()}
 			/>
 		);
 
@@ -133,7 +190,7 @@ describe('TaskEditPanel', () => {
 	it('calls onClose when Cancel is clicked', async () => {
 		const user = userEvent.setup();
 		const onClose = vi.fn();
-		render(<TaskEditPanel onSaved={vi.fn()} onClose={onClose} />);
+		render(<TaskEditPanel onSaved={vi.fn()} onClose={onClose} onError={vi.fn()} />);
 
 		await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -141,7 +198,7 @@ describe('TaskEditPanel', () => {
 	});
 
 	it('disables the Save button when the title is empty', () => {
-		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} />);
+		render(<TaskEditPanel onSaved={vi.fn()} onClose={vi.fn()} onError={vi.fn()} />);
 
 		expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
 	});

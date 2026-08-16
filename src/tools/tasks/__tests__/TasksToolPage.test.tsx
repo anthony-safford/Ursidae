@@ -280,6 +280,7 @@ describe('TasksToolPage', () => {
 		expect(screen.getByText('Who owns the budget?')).toBeInTheDocument();
 
 		fireEvent.click(screen.getByTestId('delete-task-1'));
+		fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
 		await waitFor(() => {
 			expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
@@ -301,9 +302,90 @@ describe('TasksToolPage', () => {
 		});
 
 		fireEvent.click(screen.getByTestId('delete-task-1'));
+		fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
 		await waitFor(() => {
 			expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
 		});
+	});
+
+	it('asks for confirmation before deleting a task, and cancels without deleting', async () => {
+		server.use(http.get('/api/tasks', () => HttpResponse.json([existingTask])));
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByTestId('delete-task-1'));
+		expect(screen.getByRole('heading', { name: 'Delete task?' })).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+		expect(screen.queryByRole('heading', { name: 'Delete task?' })).not.toBeInTheDocument();
+		expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+	});
+
+	it('shows an error banner and restores the task when deletion fails', async () => {
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.delete('/api/tasks/1', () =>
+				HttpResponse.json({ error: { message: 'Task is referenced elsewhere' } }, { status: 400 })
+			)
+		);
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByTestId('delete-task-1'));
+		fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+		await waitFor(() => {
+			expect(screen.getByRole('alert')).toHaveTextContent('Task is referenced elsewhere');
+		});
+		expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('dismisses the error banner when its dismiss button is clicked', async () => {
+		server.use(
+			http.get('/api/tasks', () => HttpResponse.json([existingTask])),
+			http.delete('/api/tasks/1', () => HttpResponse.error())
+		);
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Title for Write the report')).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByTestId('delete-task-1'));
+		fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+		await screen.findByRole('alert');
+		fireEvent.click(screen.getByRole('button', { name: 'Dismiss error' }));
+
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('shows an empty-state call-to-action that opens the Add Task panel', async () => {
+		server.use(http.get('/api/tasks', () => HttpResponse.json([])));
+
+		render(<TasksToolPage />);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Add your first task' })).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByRole('button', { name: 'Add your first task' }));
+
+		expect(screen.getByRole('heading', { name: 'Add Task' })).toBeInTheDocument();
 	});
 });
