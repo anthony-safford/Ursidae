@@ -1,6 +1,6 @@
 import React from 'react';
 import { CaretRight } from '@phosphor-icons/react';
-import { TASK_STATUS_OPTIONS, type TaskStatusT } from './tasksModel';
+import { TASK_STATUS_COLOR, TASK_STATUS_OPTIONS, type TaskStatusT } from './tasksModel';
 
 /** Board-wide counts the header summarizes. `undefined` while tasks/questions/links are loading. */
 export interface TasksBoardStatsT {
@@ -11,15 +11,6 @@ export interface TasksBoardStatsT {
 	questions: number;
 	links: number;
 }
-
-/** Per-status accent for the stage chips. Only accent/warning are real semantic colors — Plan gets
- * a neutral dot rather than a fourth hue, per docs/design/foundations.md's "prefer a redundant
- * encoding over inventing hues" rule. */
-const STATUS_DOT_CLASS: Record<TaskStatusT, string> = {
-	discovery: 'bg-accent',
-	research: 'bg-warning',
-	plan: 'bg-text-muted',
-};
 
 interface TasksBoardHeaderProps {
 	/** Board stats to summarize, or `undefined` while the initial fetch is still in flight. */
@@ -62,7 +53,7 @@ export const TasksBoardHeader = ({
 							<StatusChip
 								label={option.label}
 								count={stats[option.value]}
-								dotClassName={STATUS_DOT_CLASS[option.value]}
+								dotClassName={TASK_STATUS_COLOR[option.value].dot}
 								active={statusFilter === option.value}
 								ariaLabel={`Isolate ${option.label} tasks on the canvas`}
 								onClick={() => onFilterChange(option.value)}

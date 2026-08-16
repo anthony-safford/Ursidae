@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { CaretDown, X } from '@phosphor-icons/react';
-import { TASK_STATUS_OPTIONS, type TaskQuestionT, type TaskT } from './tasksModel';
+import {
+	TASK_STATUS_COLOR,
+	TASK_STATUS_OPTIONS,
+	type TaskQuestionT,
+	type TaskT,
+} from './tasksModel';
 
 /** Hidden, non-interactive: only anchors auto-drawn hierarchy edges. */
 const hiddenHandleStyle: React.CSSProperties = { opacity: 0, pointerEvents: 'none' };
@@ -50,6 +55,7 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 		onDeleteQuestion,
 	} = data;
 	const isSubtask = task.parentId !== null;
+	const statusColor = TASK_STATUS_COLOR[task.status];
 
 	const [title, setTitle] = useState(task.title);
 	const [description, setDescription] = useState(task.description ?? '');
@@ -139,7 +145,7 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 				 * top-left, where a card naturally gets grabbed — stays grab surface, since neither end
 				 * is a control that swallows the gesture. */}
 				<div
-					className={`${TASK_DRAG_HANDLE_CLASS} flex items-center justify-between gap-sm border-b border-border-lit border-l-[3px] border-l-accent bg-accent/10 px-sm py-xs cursor-grab active:cursor-grabbing hover:bg-accent/20 transition-colors duration-200`}
+					className={`${TASK_DRAG_HANDLE_CLASS} flex items-center justify-between gap-sm border-b border-border-lit border-l-[3px] ${statusColor.border} ${statusColor.bg} px-sm py-xs cursor-grab active:cursor-grabbing ${statusColor.bgHover} transition-colors duration-200`}
 				>
 					<span className="shrink-0 text-[10px] uppercase tracking-wider text-text-muted">
 						{isSubtask ? 'Sub-task' : 'Task'}
@@ -151,10 +157,13 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 					 * how much right padding it was given; a span cannot clip, and the overlaid select
 					 * still supplies native behaviour, keyboard access and the accessible name. */}
 					<div className="relative flex shrink-0 items-center gap-xs rounded-brand focus-within:outline focus-within:outline-1 focus-within:outline-accent">
-						<span aria-hidden="true" className="text-xs uppercase tracking-wide text-accent">
+						<span
+							aria-hidden="true"
+							className={`text-xs uppercase tracking-wide ${statusColor.text}`}
+						>
 							{TASK_STATUS_OPTIONS.find((option) => option.value === task.status)?.label}
 						</span>
-						<CaretDown size={10} weight="bold" className="shrink-0 text-accent" />
+						<CaretDown size={10} weight="bold" className={`shrink-0 ${statusColor.text}`} />
 						<select
 							value={task.status}
 							onChange={(e) =>
