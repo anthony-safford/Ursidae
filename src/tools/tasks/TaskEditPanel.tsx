@@ -120,9 +120,15 @@ export const TaskEditPanel = ({
 						<button
 							type="submit"
 							disabled={saving || !title.trim()}
-							className="rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+							className="inline-flex items-center gap-xs rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							Save
+							<span
+								aria-hidden="true"
+								className="rounded-brand border border-white/30 px-xs text-xs leading-4"
+							>
+								↵
+							</span>
 						</button>
 					</div>
 				</form>

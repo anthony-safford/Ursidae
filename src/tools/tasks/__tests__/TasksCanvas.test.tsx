@@ -11,6 +11,7 @@ import {
 	isValidLinkConnection,
 	resolveConfirmedLink,
 } from '../TasksCanvas';
+import { TASK_DRAG_HANDLE_CLASS } from '../TaskNode';
 import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from '../tasksModel';
 
 const baseTask: TaskT = {
@@ -109,6 +110,7 @@ describe('tasksToNodes', () => {
 				id: '1',
 				type: 'task',
 				position: { x: 10, y: 20 },
+				dragHandle: '.task-card-handle',
 				data: {
 					task: baseTask,
 					questions: [question],
@@ -155,9 +157,9 @@ describe('tasksToEdges', () => {
 });
 
 describe('linksToEdges', () => {
-	it('maps a link to a deletable "link" edge anchored to the link handles', () => {
+	it('maps a link to a deletable "link" edge anchored to the right-of-source/left-of-target handles when the source sits left of the target', () => {
 		const onDeleteLink = vi.fn();
-		const edges = linksToEdges([link], onDeleteLink);
+		const edges = linksToEdges([link], onDeleteLink, [baseTask, subtask]);
 
 		expect(edges).toEqual([
 			expect.objectContaining({
@@ -172,19 +174,35 @@ describe('linksToEdges', () => {
 		]);
 	});
 
+	it('anchors to the left-of-source/right-of-target handles when the source sits right of the target, to avoid the edge looping back through the cards', () => {
+		const leftTask = { ...baseTask, id: 2, positionX: 0 };
+		const rightTask = { ...subtask, id: 1, parentId: null, positionX: 200 };
+		const edges = linksToEdges([{ ...link, sourceTaskId: 1, targetTaskId: 2 }], vi.fn(), [
+			rightTask,
+			leftTask,
+		]);
+
+		expect(edges[0]).toEqual(
+			expect.objectContaining({
+				sourceHandle: 'link-source-left',
+				targetHandle: 'link-target-right',
+			})
+		);
+	});
+
 	it.each([
 		['blocks', 'var(--color-danger)'],
 		['related', 'var(--color-accent)'],
 		['order', 'var(--color-warning)'],
 	] satisfies [TaskLinkTypeT, string][])('styles a %s link with %s', (type, color) => {
-		const edges = linksToEdges([{ ...link, type }], vi.fn());
+		const edges = linksToEdges([{ ...link, type }], vi.fn(), [baseTask, subtask]);
 
 		expect(edges[0]?.style?.stroke).toBe(color);
 	});
 
 	it('dashes an order link to distinguish it from a related link sharing the same color', () => {
-		const relatedEdges = linksToEdges([{ ...link, type: 'related' }], vi.fn());
-		const orderEdges = linksToEdges([{ ...link, type: 'order' }], vi.fn());
+		const relatedEdges = linksToEdges([{ ...link, type: 'related' }], vi.fn(), [baseTask, subtask]);
+		const orderEdges = linksToEdges([{ ...link, type: 'order' }], vi.fn(), [baseTask, subtask]);
 
 		expect(relatedEdges[0]?.style?.strokeDasharray).toBeUndefined();
 		expect(orderEdges[0]?.style?.strokeDasharray).toBe('6 4');
@@ -286,15 +304,6 @@ describe('TasksCanvas', () => {
 		expect(onFieldChange).toHaveBeenCalledWith(1, { title: 'Write the final report' });
 	});
 
-	it('does not call onFieldChange when the title is blurred unchanged', () => {
-		const onFieldChange = vi.fn();
-		renderCanvas({ onFieldChange });
-
-		fireEvent.blur(screen.getByLabelText('Title for Write the report'));
-
-		expect(onFieldChange).not.toHaveBeenCalled();
-	});
-
 	it('commits a description edit via onFieldChange when the description textarea is blurred', () => {
 		const onFieldChange = vi.fn();
 		renderCanvas({ onFieldChange });
@@ -304,15 +313,6 @@ describe('TasksCanvas', () => {
 		fireEvent.blur(descriptionInput);
 
 		expect(onFieldChange).toHaveBeenCalledWith(1, { description: 'Updated notes' });
-	});
-
-	it('does not call onFieldChange when a description-less sub-task is blurred unchanged', () => {
-		const onFieldChange = vi.fn();
-		renderCanvas({ tasks: [baseTask, subtask], onFieldChange });
-
-		fireEvent.blur(screen.getByLabelText('Description for Draft the outline'));
-
-		expect(onFieldChange).not.toHaveBeenCalled();
 	});
 
 	it('does not persist an emptied title', () => {
@@ -325,6 +325,24 @@ describe('TasksCanvas', () => {
 
 		expect(onFieldChange).not.toHaveBeenCalled();
 		expect(titleInput).toHaveValue('Write the report');
+	});
+
+	it('does not call onFieldChange when the title is blurred unchanged', () => {
+		const onFieldChange = vi.fn();
+		renderCanvas({ onFieldChange });
+
+		fireEvent.blur(screen.getByLabelText('Title for Write the report'));
+
+		expect(onFieldChange).not.toHaveBeenCalled();
+	});
+
+	it('does not call onFieldChange when a description-less sub-task is blurred unchanged', () => {
+		const onFieldChange = vi.fn();
+		renderCanvas({ tasks: [baseTask, subtask], onFieldChange });
+
+		fireEvent.blur(screen.getByLabelText('Description for Draft the outline'));
+
+		expect(onFieldChange).not.toHaveBeenCalled();
 	});
 
 	it('clears the description to null via onFieldChange when blurred empty', () => {
@@ -428,11 +446,70 @@ describe('TasksCanvas', () => {
 		expect(onAddQuestion).not.toHaveBeenCalled();
 	});
 
+	it("submits a question from the ↵ affordance, the row's only control", () => {
+		const onAddQuestion = vi.fn();
+		renderCanvas({ onAddQuestion });
+
+		const submit = screen.getByTestId('add-question-1');
+		expect(submit).toHaveTextContent('↵');
+
+		fireEvent.change(screen.getByLabelText('Add a question to Write the report'), {
+			target: { value: 'Is legal sign-off needed?' },
+		});
+		fireEvent.click(submit);
+
+		expect(onAddQuestion).toHaveBeenCalledWith(1, 'Is legal sign-off needed?');
+	});
+
 	it('renders pan/zoom controls and a minimap', () => {
 		renderCanvas();
 
 		expect(screen.getByTestId('rf__controls')).toBeInTheDocument();
 		expect(screen.getByTestId('rf__minimap')).toBeInTheDocument();
+	});
+
+	it('renders the status label as text alongside the select, so the longest label cannot clip', () => {
+		renderCanvas();
+
+		const select = screen.getByLabelText('Status for Write the report');
+		expect(select).toHaveValue('discovery');
+
+		// The visible label is its own element, not the select's own (clip-prone) rendering.
+		const band = document.querySelector(`.${TASK_DRAG_HANDLE_CLASS}`);
+		expect(band).toHaveTextContent('Discovery');
+		expect(select).not.toHaveClass('appearance-none');
+	});
+
+	it('balances the band with a type label left and the status right', () => {
+		renderCanvas();
+
+		const band = document.querySelector(`.${TASK_DRAG_HANDLE_CLASS}`);
+		expect(band).toHaveClass('justify-between');
+		expect(band).toHaveTextContent('Task');
+		expect(band).toHaveTextContent('Discovery');
+	});
+
+	it('labels a sub-task card as such in its band', () => {
+		renderCanvas({ tasks: [baseTask, subtask] });
+
+		const bands = document.querySelectorAll(`.${TASK_DRAG_HANDLE_CLASS}`);
+		expect(bands).toHaveLength(2);
+		expect(bands[0]).toHaveTextContent('Task');
+		expect(bands[1]).toHaveTextContent('Sub-task');
+	});
+
+	it('confines dragging to the status band, so the editable fields are not drag surfaces', () => {
+		renderCanvas();
+
+		// The node advertises the band as its only drag handle...
+		const [node] = tasksToNodes([baseTask], [], noop, noop, noop, noop, noop);
+		expect(node.dragHandle).toBe(`.${TASK_DRAG_HANDLE_CLASS}`);
+
+		// ...and exactly one element in the rendered card carries that class.
+		const handles = document.querySelectorAll(`.${TASK_DRAG_HANDLE_CLASS}`);
+		expect(handles).toHaveLength(1);
+		expect(handles[0]).toContainElement(screen.getByLabelText('Status for Write the report'));
+		expect(handles[0]).not.toContainElement(screen.getByLabelText('Title for Write the report'));
 	});
 
 	// Rendering an actual link edge (and its delete button) requires React Flow to have measured

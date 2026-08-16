@@ -14,7 +14,7 @@ import {
 	type OnNodeDrag,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { TaskNode, type TaskNodeT } from './TaskNode';
+import { TaskNode, TASK_DRAG_HANDLE_CLASS, type TaskNodeT } from './TaskNode';
 import { LinkEdge } from './LinkEdge';
 import { LinkTypePicker } from './LinkTypePicker';
 import { updateTask } from './tasksApi';
@@ -105,6 +105,8 @@ export function tasksToNodes(
 		id: String(task.id),
 		type: 'task',
 		position: { x: task.positionX, y: task.positionY },
+		// Confines dragging to the card's status band, so clicking a field never starts a drag.
+		dragHandle: `.${TASK_DRAG_HANDLE_CLASS}`,
 		data: {
 			task,
 			questions: questions.filter((q) => q.taskId === task.id),
@@ -129,17 +131,30 @@ export function tasksToEdges(tasks: TaskT[]): Edge[] {
 		}));
 }
 
-/** Maps relationship links to styled, deletable edges anchored to each card's link handles. */
-export function linksToEdges(links: TaskLinkT[], onDeleteLink: (id: number) => void): Edge[] {
+/** Maps relationship links to styled, deletable edges anchored to each card's link handles.
+ * Each card exposes a source and target handle on both its left and right edge (only the
+ * right-source/left-target pair is ever visible; the other pair is invisible and exists purely
+ * for this anchoring choice), so the edge can exit/enter whichever side actually faces the other
+ * card — rather than always exiting right and entering left regardless of where the cards ended
+ * up, which is what caused edges to loop back through the cards themselves. */
+export function linksToEdges(
+	links: TaskLinkT[],
+	onDeleteLink: (id: number) => void,
+	tasks: TaskT[]
+): Edge[] {
+	const taskById = new Map(tasks.map((task) => [task.id, task]));
 	return links.map((link) => {
 		const color = LINK_TYPE_COLOR[link.type];
+		const source = taskById.get(link.sourceTaskId);
+		const target = taskById.get(link.targetTaskId);
+		const reversed = !!source && !!target && source.positionX > target.positionX;
 		return {
 			id: `link-${link.id}`,
 			type: 'link',
 			source: String(link.sourceTaskId),
 			target: String(link.targetTaskId),
-			sourceHandle: 'link-source',
-			targetHandle: 'link-target',
+			sourceHandle: reversed ? 'link-source-left' : 'link-source',
+			targetHandle: reversed ? 'link-target-right' : 'link-target',
 			style: { stroke: color, strokeWidth: 2, strokeDasharray: LINK_TYPE_DASH[link.type] },
 			markerEnd: { type: MarkerType.ArrowClosed, color },
 			data: { linkId: link.id, onDelete: onDeleteLink },
@@ -206,7 +221,7 @@ export const TasksCanvas = ({
 	);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([
 		...tasksToEdges(tasks),
-		...linksToEdges(links, onDeleteLink),
+		...linksToEdges(links, onDeleteLink, tasks),
 	]);
 	const [pendingConnection, setPendingConnection] = useState<
 		{ sourceTaskId: number; targetTaskId: number } | undefined
@@ -224,7 +239,7 @@ export const TasksCanvas = ({
 				onDeleteQuestion
 			)
 		);
-		setEdges([...tasksToEdges(tasks), ...linksToEdges(links, onDeleteLink)]);
+		setEdges([...tasksToEdges(tasks), ...linksToEdges(links, onDeleteLink, tasks)]);
 	}, [
 		tasks,
 		questions,
@@ -263,7 +278,7 @@ export const TasksCanvas = ({
 	);
 
 	return (
-		<div className="h-[70vh] bg-surface border border-border rounded-brand overflow-hidden">
+		<div className="h-[70vh] bg-bg border border-border-lit rounded-brand overflow-hidden">
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}

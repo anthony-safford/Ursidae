@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Plus, Trash, X } from '@phosphor-icons/react';
+import { CaretDown, X } from '@phosphor-icons/react';
 import { TASK_STATUS_OPTIONS, type TaskQuestionT, type TaskT } from './tasksModel';
 
 /** Hidden, non-interactive: only anchors auto-drawn hierarchy edges. */
@@ -15,6 +15,10 @@ const linkHandleStyle: React.CSSProperties = {
 	border: '2px solid var(--color-accent)',
 };
 const linkHandleClassName = 'opacity-0 transition-opacity group-hover:opacity-100';
+
+/** Marks the card's status band as its drag surface. Passed to React Flow as each node's
+ * `dragHandle` selector, so a drag can only start there and clicks elsewhere reach the fields. */
+export const TASK_DRAG_HANDLE_CLASS = 'task-card-handle';
 
 export type TaskNodeT = Node<
 	{
@@ -33,7 +37,8 @@ export type TaskNodeT = Node<
 	'task'
 >;
 
-/** React Flow node rendering a task card as an inline-editable form, with a question-card list. */
+/** React Flow node rendering a task card as a stacked record — status band, body, questions
+ * section, action footer — per the "Ledger Block" rendition in docs/design/interaction.md. */
 export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => {
 	const {
 		task,
@@ -74,9 +79,10 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 	};
 
 	return (
-		<div
-			className={`${isSubtask ? 'w-64 p-sm' : 'w-80 p-md'} group flex flex-col gap-xs bg-surface border border-border rounded-brand cursor-grab active:cursor-grabbing`}
-		>
+		// Outer element sizes the node and hosts the connect handles, which React Flow positions
+		// straddling this element's edges — it must not clip, so overflow-hidden (needed to keep the
+		// status band's rounded top corners) lives on the inner card element instead.
+		<div className={`${isSubtask ? 'w-64' : 'w-80'} group relative`}>
 			<Handle
 				type="target"
 				position={Position.Top}
@@ -105,126 +111,190 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 				className={linkHandleClassName}
 				aria-label={`Link source for ${task.title}`}
 			/>
+			{/* Invisible, non-interactive: lets a persisted link's rendered edge anchor to whichever
+			 * side actually faces the other card, instead of always exiting right/entering left
+			 * regardless of layout. Live drag-to-connect already works from either visible handle
+			 * above via the canvas's loose connection mode. */}
+			<Handle
+				type="source"
+				position={Position.Left}
+				id="link-source-left"
+				isConnectable={false}
+				style={hiddenHandleStyle}
+			/>
+			<Handle
+				type="target"
+				position={Position.Right}
+				id="link-target-right"
+				isConnectable={false}
+				style={hiddenHandleStyle}
+			/>
 
-			<div className="flex items-center gap-xs">
-				<input
-					type="text"
-					value={title}
-					onChange={(e) => setTitle(e.target.value)}
-					onBlur={handleTitleBlur}
-					onMouseDown={(e) => e.stopPropagation()}
-					aria-label={`Title for ${task.title}`}
-					className="min-w-0 flex-1 rounded-brand bg-transparent px-xs -mx-xs font-semibold focus:bg-bg focus:outline-none"
-				/>
-				<select
-					value={task.status}
-					onChange={(e) => onFieldChange(task.id, { status: e.target.value as TaskT['status'] })}
-					onMouseDown={(e) => e.stopPropagation()}
-					aria-label={`Status for ${task.title}`}
-					className="shrink-0 bg-transparent text-xs uppercase tracking-wide text-text-muted focus:outline-none"
+			<div className="flex flex-col overflow-hidden rounded-brand border border-border-lit bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+				{/* Status band, and the card's only drag surface (see TASK_DRAG_HANDLE_CLASS). The rest
+				 * of the card is fields and buttons, so dragging from anywhere used to mean grabbing a
+				 * control by accident; confining drag to this band makes both gestures unambiguous.
+				 * Type label left, status right: the band balances end to end, the card says what it is
+				 * without relying on its width alone, and the whole span between them — including the
+				 * top-left, where a card naturally gets grabbed — stays grab surface, since neither end
+				 * is a control that swallows the gesture. */}
+				<div
+					className={`${TASK_DRAG_HANDLE_CLASS} flex items-center justify-between gap-sm border-b border-border-lit border-l-[3px] border-l-accent bg-accent/10 px-sm py-xs cursor-grab active:cursor-grabbing hover:bg-accent/20 transition-colors duration-200`}
 				>
-					{TASK_STATUS_OPTIONS.map((option) => (
-						<option key={option.value} value={option.value}>
-							{option.label}
-						</option>
-					))}
-				</select>
-				{!isSubtask && (
+					<span className="shrink-0 text-[10px] uppercase tracking-wider text-text-muted">
+						{isSubtask ? 'Sub-task' : 'Task'}
+					</span>
+
+					{/* The status label is a plain span, and the real <select> is an invisible overlay on
+					 * top of it. An `appearance-none` select mis-measures its own intrinsic width once
+					 * letter-spacing is applied, which clipped the longest label ("DISCOVERY") no matter
+					 * how much right padding it was given; a span cannot clip, and the overlaid select
+					 * still supplies native behaviour, keyboard access and the accessible name. */}
+					<div className="relative flex shrink-0 items-center gap-xs rounded-brand focus-within:outline focus-within:outline-1 focus-within:outline-accent">
+						<span aria-hidden="true" className="text-xs uppercase tracking-wide text-accent">
+							{TASK_STATUS_OPTIONS.find((option) => option.value === task.status)?.label}
+						</span>
+						<CaretDown size={10} weight="bold" className="shrink-0 text-accent" />
+						<select
+							value={task.status}
+							onChange={(e) =>
+								onFieldChange(task.id, { status: e.target.value as TaskT['status'] })
+							}
+							onMouseDown={(e) => e.stopPropagation()}
+							aria-label={`Status for ${task.title}`}
+							className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+						>
+							{TASK_STATUS_OPTIONS.map((option) => (
+								<option key={option.value} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</div>
+				</div>
+
+				{/* Body */}
+				<div className="flex flex-col gap-xs px-sm py-sm">
+					<input
+						type="text"
+						value={title}
+						onChange={(e) => setTitle(e.target.value)}
+						onBlur={handleTitleBlur}
+						onMouseDown={(e) => e.stopPropagation()}
+						aria-label={`Title for ${task.title}`}
+						className="min-w-0 rounded-brand bg-transparent px-xs -mx-xs font-heading text-base focus:bg-bg focus:outline-none"
+					/>
+					<textarea
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+						onBlur={handleDescriptionBlur}
+						onMouseDown={(e) => e.stopPropagation()}
+						placeholder="Description"
+						rows={2}
+						aria-label={`Description for ${task.title}`}
+						className="w-full resize-none rounded-brand bg-transparent px-xs -mx-xs text-sm text-text-muted placeholder:text-text-muted focus:bg-bg focus:outline-none"
+					/>
+				</div>
+
+				{/* Questions: a labelled section of the record, not a pile of separate boxes. */}
+				<div className="border-t border-border-lit px-sm">
+					<div className="pt-sm pb-xs text-[10px] uppercase tracking-wide text-text-muted">
+						Questions · {questions.length}
+					</div>
+
+					{questions.length > 0 && (
+						<ul className="flex flex-col">
+							{questions.map((question) => (
+								<li
+									key={question.id}
+									className="flex items-center justify-between gap-xs border-t border-border py-xs text-xs first:border-t-0"
+								>
+									<span className="min-w-0 break-words">{question.text}</span>
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											onDeleteQuestion(question.id);
+										}}
+										onMouseDown={(e) => e.stopPropagation()}
+										aria-label={`Remove question: ${question.text}`}
+										data-testid={`delete-question-${question.id}`}
+										className="shrink-0 text-text-muted hover:text-danger transition-colors duration-200"
+									>
+										<X size={12} weight="bold" />
+									</button>
+								</li>
+							))}
+						</ul>
+					)}
+
+					{/* The input row *is* the control, sitting where the new question will land, so it
+					 * needs no leading `+`. The trailing `↵` is the submit affordance itself — it names
+					 * the keyboard path and is clickable for the pointer one, one glyph doing both jobs.
+					 * See docs/design/interaction.md #1 and #2. */}
+					<div className="flex items-center gap-xs border-t border-border py-xs text-xs">
+						<input
+							type="text"
+							value={newQuestion}
+							onChange={(e) => setNewQuestion(e.target.value)}
+							onMouseDown={(e) => e.stopPropagation()}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') {
+									e.preventDefault();
+									handleAddQuestion();
+								}
+							}}
+							placeholder="Add a question..."
+							aria-label={`Add a question to ${task.title}`}
+							className="min-w-0 flex-1 rounded-brand bg-transparent px-xs -mx-xs placeholder:text-text-muted focus:bg-bg focus:outline-none"
+						/>
+						<button
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								handleAddQuestion();
+							}}
+							onMouseDown={(e) => e.stopPropagation()}
+							aria-label={`Add question to ${task.title}`}
+							data-testid={`add-question-${task.id}`}
+							className="shrink-0 rounded-brand border border-border-lit px-xs text-[10px] leading-4 text-text-muted hover:border-accent hover:text-accent transition-colors duration-200"
+						>
+							↵
+						</button>
+					</div>
+				</div>
+
+				{/* Footer: labelled actions, never bare icons — see docs/design/interaction.md #3. */}
+				<div className="flex border-t border-border-lit">
+					{!isSubtask && (
+						<button
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								onAddSubtask(task.id);
+							}}
+							onMouseDown={(e) => e.stopPropagation()}
+							aria-label={`Add sub-task to ${task.title}`}
+							data-testid={`add-subtask-${task.id}`}
+							className="flex-1 border-r border-border-lit py-xs text-xs uppercase tracking-wide text-text-muted hover:text-accent hover:bg-white/5 transition-colors duration-200"
+						>
+							↳ Sub-task
+						</button>
+					)}
 					<button
 						type="button"
 						onClick={(e) => {
 							e.stopPropagation();
-							onAddSubtask(task.id);
+							onDelete(task.id);
 						}}
 						onMouseDown={(e) => e.stopPropagation()}
-						aria-label={`Add sub-task to ${task.title}`}
-						data-testid={`add-subtask-${task.id}`}
-						className="shrink-0 text-text-muted hover:text-accent transition-colors duration-200"
+						aria-label={`Delete ${task.title}`}
+						data-testid={`delete-task-${task.id}`}
+						className="flex-1 py-xs text-xs uppercase tracking-wide text-danger/80 hover:text-danger hover:bg-white/5 transition-colors duration-200"
 					>
-						<Plus size={14} weight="bold" />
+						Delete
 					</button>
-				)}
-				<button
-					type="button"
-					onClick={(e) => {
-						e.stopPropagation();
-						onDelete(task.id);
-					}}
-					onMouseDown={(e) => e.stopPropagation()}
-					aria-label={`Delete ${task.title}`}
-					data-testid={`delete-task-${task.id}`}
-					className="shrink-0 text-text-muted hover:text-danger transition-colors duration-200"
-				>
-					<Trash size={14} weight="bold" />
-				</button>
-			</div>
-
-			<textarea
-				value={description}
-				onChange={(e) => setDescription(e.target.value)}
-				onBlur={handleDescriptionBlur}
-				onMouseDown={(e) => e.stopPropagation()}
-				placeholder="Description"
-				rows={2}
-				aria-label={`Description for ${task.title}`}
-				className="w-full resize-none rounded-brand bg-transparent px-xs -mx-xs text-sm text-text-muted placeholder:text-text-muted focus:bg-bg focus:outline-none"
-			/>
-
-			{questions.length > 0 && (
-				<ul className="flex flex-col gap-xs">
-					{questions.map((question) => (
-						<li
-							key={question.id}
-							className="flex items-center justify-between gap-xs rounded-brand border border-border bg-bg px-sm py-xs text-xs"
-						>
-							<span className="min-w-0 break-words">{question.text}</span>
-							<button
-								type="button"
-								onClick={(e) => {
-									e.stopPropagation();
-									onDeleteQuestion(question.id);
-								}}
-								onMouseDown={(e) => e.stopPropagation()}
-								aria-label={`Remove question: ${question.text}`}
-								data-testid={`delete-question-${question.id}`}
-								className="shrink-0 text-text-muted hover:text-danger transition-colors duration-200"
-							>
-								<X size={12} weight="bold" />
-							</button>
-						</li>
-					))}
-				</ul>
-			)}
-
-			<div className="flex items-center gap-xs">
-				<input
-					type="text"
-					value={newQuestion}
-					onChange={(e) => setNewQuestion(e.target.value)}
-					onMouseDown={(e) => e.stopPropagation()}
-					onKeyDown={(e) => {
-						if (e.key === 'Enter') {
-							e.preventDefault();
-							handleAddQuestion();
-						}
-					}}
-					placeholder="Add a question..."
-					aria-label={`Add a question to ${task.title}`}
-					className="min-w-0 flex-1 rounded-brand bg-transparent px-xs -mx-xs text-xs placeholder:text-text-muted focus:bg-bg focus:outline-none"
-				/>
-				<button
-					type="button"
-					onClick={(e) => {
-						e.stopPropagation();
-						handleAddQuestion();
-					}}
-					onMouseDown={(e) => e.stopPropagation()}
-					aria-label={`Add question to ${task.title}`}
-					data-testid={`add-question-${task.id}`}
-					className="shrink-0 text-text-muted hover:text-accent transition-colors duration-200"
-				>
-					<Plus size={12} weight="bold" />
-				</button>
+				</div>
 			</div>
 		</div>
 	);

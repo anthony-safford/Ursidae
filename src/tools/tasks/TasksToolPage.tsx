@@ -14,6 +14,7 @@ import { TasksCanvas } from './TasksCanvas';
 import { TaskEditPanel } from './TaskEditPanel';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ErrorBanner } from './ErrorBanner';
+import { findFreeTaskPosition } from './taskLayout';
 import type { TaskLinkT, TaskLinkTypeT, TaskQuestionT, TaskT } from './tasksModel';
 
 /** Sentinel distinguishing "creating a new task" from no panel being open. */
@@ -254,11 +255,12 @@ export const TasksToolPage = (): React.ReactElement => {
 			{editing !== undefined && (
 				<TaskEditPanel
 					parentId={newTaskParent?.id}
-					initialPosition={
+					initialPosition={findFreeTaskPosition(
+						tasks ?? [],
 						newTaskParent
 							? { x: newTaskParent.positionX + 60, y: newTaskParent.positionY + 260 }
 							: undefined
-					}
+					)}
 					onSaved={handleTaskSaved}
 					onClose={() => {
 						setEditing(undefined);

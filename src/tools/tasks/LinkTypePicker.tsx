@@ -31,40 +31,52 @@ export const LinkTypePicker = ({
 					</button>
 				</div>
 
-				<div role="radiogroup" aria-label="Link type" className="flex flex-col gap-xs">
-					{TASK_LINK_TYPE_OPTIONS.map((option) => (
-						<label
-							key={option.value}
-							className="flex items-center gap-sm rounded-brand border border-border p-sm cursor-pointer hover:bg-bg"
-						>
-							<input
-								type="radio"
-								name="link-type"
-								value={option.value}
-								checked={type === option.value}
-								onChange={() => setType(option.value)}
-							/>
-							<span>{option.label}</span>
-						</label>
-					))}
-				</div>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						onConfirm(type);
+					}}
+				>
+					<div role="radiogroup" aria-label="Link type" className="flex flex-col gap-xs">
+						{TASK_LINK_TYPE_OPTIONS.map((option) => (
+							<label
+								key={option.value}
+								className="flex items-center gap-sm rounded-brand border border-border p-sm cursor-pointer hover:bg-bg"
+							>
+								<input
+									type="radio"
+									name="link-type"
+									value={option.value}
+									checked={type === option.value}
+									onChange={() => setType(option.value)}
+								/>
+								<span>{option.label}</span>
+							</label>
+						))}
+					</div>
 
-				<div className="flex justify-end gap-sm mt-md">
-					<button
-						type="button"
-						onClick={onCancel}
-						className="rounded-brand border border-border px-md py-sm uppercase tracking-wide text-sm font-medium text-text-muted hover:text-text transition-colors duration-200"
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						onClick={() => onConfirm(type)}
-						className="rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200"
-					>
-						Add
-					</button>
-				</div>
+					<div className="flex justify-end gap-sm mt-md">
+						<button
+							type="button"
+							onClick={onCancel}
+							className="rounded-brand border border-border px-md py-sm uppercase tracking-wide text-sm font-medium text-text-muted hover:text-text transition-colors duration-200"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							className="inline-flex items-center gap-xs rounded-brand bg-accent px-md py-sm uppercase tracking-wide text-sm font-medium text-text hover:bg-accent-hover transition-colors duration-200"
+						>
+							Add
+							<span
+								aria-hidden="true"
+								className="rounded-brand border border-white/30 px-xs text-xs leading-4"
+							>
+								↵
+							</span>
+						</button>
+					</div>
+				</form>
 			</div>
 		</div>
 	);
