@@ -55,7 +55,11 @@ Urisdae is a personal, local-only collection of small self-contained tools and u
   - `server/db/` — Shared database utilities
   - Tests colocated in `__tests__/` folders
 
-- **`docs/adr/`** — Architecture Decision Records documenting key design choices
+- **`docs/adr/`** — Architecture Decision Records documenting key architectural choices
+
+- **`docs/design/`** — Design system: visual foundations and interaction conventions
+
+- **`docs/epics/`** — Epic breakdowns, one file per epic, feature-per-section
 
 - **`data/`** — Per-tool SQLite files (gitignored, created on demand)
 

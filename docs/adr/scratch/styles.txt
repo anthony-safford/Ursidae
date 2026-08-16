@@ -1,0 +1,40 @@
+dark, modern, terminal-influenced
+
+:root {
+  /* Colors */
+  --color-bg: #2C3E50;             /* off-dark navy — page background */
+  --color-surface: #34495E;        /* header, nav, cards — one step lighter */
+  --color-border: #2C3E50;         /* dividers between surface elements */
+  --color-text: #FFFFFF;           /* primary text — full contrast, not softened */
+  --color-text-muted: #ECF0F199;   /* muted text — light color, reduced opacity */
+  --color-accent: #1ABC9C;         /* teal — primary actions, active states */
+  --color-accent-hover: #16A085;   /* deeper teal — hover/pressed states */
+
+  /* Fonts */
+  --font-heading: "Departure Mono", "JetBrains Mono", monospace; /* pixel/terminal display font — headings, large labels */
+  --font-body: "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  /* Shape */
+  --radius: 4px; /* sharp, not rounded — terminal-influenced, not soft */
+}
+--font-heading (Departure Mono) — self-host the .woff2 from rektdeckard/departure-mono on GitHub releases. Sizing note from the designer: renders crisp in multiples of 11px (11, 22, 33...); other sizes can look slightly soft/anti-aliased.
+--radius: 4px — deliberately sharp corners, down from the earlier 8px, to reinforce the terminal/technical direction. Applies everywhere: cards, buttons, pills, avatars.
+Structural rules (not just tokens)
+
+These are patterns to apply consistently, not one-off styling decisions per component:
+
+Uppercase + tracked labels for nav items, field labels, and buttons (COUNT, INCREMENT, not Count, Increment) — letter-spacing: 0.05–0.1em.
+Active nav/tab state = left border accent, not a filled pill. border-left: 2px solid var(--color-accent) plus a faint tinted background, rather than a solid accent fill — reads as a terminal-style selection indicator and matches the sharp-corner direction better than a rounded pill would.
+Header gets right-side balance. Don't let nav/logo sit alone on the left with empty space on the right — a search trigger (with a ⌘K hint), a settings icon, and an avatar placeholder give the header real structure.
+Hairline border between header and content (border-bottom: 1px solid var(--color-border)) so the header reads as a distinct elevated layer, not just a same-color band bleeding into the page.
+Stat/data values get wrapped in a bordered surface card, never left as loose floating text — background: var(--color-surface), border: 0.5px solid var(--color-border), border-radius: var(--radius).
+One primary (filled accent) button per view; secondary actions are ghost/outline style (background: transparent, border: 0.5px solid) — same restraint principle as accent color usage generally.
+Icons: Phosphor, weight still open between Regular and Bold — worth a side-by-side check against the mono body font once real components exist; mono's blocky letterforms may call for a slightly heavier icon weight than Regular.
