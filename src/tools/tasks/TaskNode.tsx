@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { CaretDown, X } from '@phosphor-icons/react';
 import {
@@ -24,6 +24,13 @@ const linkHandleClassName = 'opacity-0 transition-opacity group-hover:opacity-10
 /** Marks the card's status band as its drag surface. Passed to React Flow as each node's
  * `dragHandle` selector, so a drag can only start there and clicks elsewhere reach the fields. */
 export const TASK_DRAG_HANDLE_CLASS = 'task-card-handle';
+
+/** Rough char count beyond which a 2-line description reads as truncated rather than just short —
+ * there's no DOM measurement here, so this is a width/font-size estimate, not an exact wrap point. */
+const DESCRIPTION_CLAMP_THRESHOLD = 120;
+
+/** Questions beyond this many are hidden behind the section's expand toggle by default. */
+const QUESTIONS_VISIBLE_COUNT = 3;
 
 export type TaskNodeT = Node<
 	{
@@ -60,6 +67,23 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 	const [title, setTitle] = useState(task.title);
 	const [description, setDescription] = useState(task.description ?? '');
 	const [newQuestion, setNewQuestion] = useState('');
+	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+	const [areQuestionsExpanded, setAreQuestionsExpanded] = useState(false);
+
+	const titleInputRef = useRef<HTMLInputElement>(null);
+	const [isTitleTruncated, setIsTitleTruncated] = useState(false);
+
+	useEffect(() => {
+		const el = titleInputRef.current;
+		setIsTitleTruncated(el !== null && el.scrollWidth > el.clientWidth);
+	}, [title]);
+
+	const isDescriptionClampable = description.length > DESCRIPTION_CLAMP_THRESHOLD;
+	const areQuestionsClampable = questions.length > QUESTIONS_VISIBLE_COUNT;
+	const visibleQuestions =
+		areQuestionsClampable && !areQuestionsExpanded
+			? questions.slice(0, QUESTIONS_VISIBLE_COUNT)
+			: questions;
 
 	const handleTitleBlur = (): void => {
 		const trimmed = title.trim();
@@ -184,36 +208,77 @@ export const TaskNode = ({ data }: NodeProps<TaskNodeT>): React.ReactElement => 
 
 				{/* Body */}
 				<div className="flex flex-col gap-xs px-sm py-sm">
-					<input
-						type="text"
-						value={title}
-						onChange={(e) => setTitle(e.target.value)}
-						onBlur={handleTitleBlur}
-						onMouseDown={(e) => e.stopPropagation()}
-						aria-label={`Title for ${task.title}`}
-						className="min-w-0 rounded-brand bg-transparent px-xs -mx-xs font-heading text-base focus:bg-bg focus:outline-none"
-					/>
+					{/* Padding lives on the wrapper, not the input: Chromium fails to render the
+					 * text-overflow ellipsis on a padded <input>, hard-clipping instead. */}
+					<div className="group/title relative min-w-0 rounded-brand px-xs -mx-xs focus-within:bg-bg">
+						<input
+							ref={titleInputRef}
+							type="text"
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+							onBlur={handleTitleBlur}
+							onMouseDown={(e) => e.stopPropagation()}
+							aria-label={`Title for ${task.title}`}
+							className="w-full min-w-0 truncate bg-transparent font-heading text-base focus:outline-none"
+						/>
+						{isTitleTruncated && (
+							<div
+								role="tooltip"
+								className="pointer-events-none absolute left-0 right-0 top-full z-10 mt-xs whitespace-normal break-words rounded-brand border border-border-lit bg-surface px-xs py-xs text-sm text-text opacity-0 shadow-[0_2px_10px_rgba(0,0,0,0.35)] transition-opacity duration-200 group-hover/title:opacity-100"
+							>
+								{title}
+							</div>
+						)}
+					</div>
 					<textarea
 						value={description}
 						onChange={(e) => setDescription(e.target.value)}
 						onBlur={handleDescriptionBlur}
+						onFocus={() => setIsDescriptionExpanded(true)}
 						onMouseDown={(e) => e.stopPropagation()}
 						placeholder="Description"
-						rows={2}
+						rows={isDescriptionExpanded || !isDescriptionClampable ? 6 : 2}
 						aria-label={`Description for ${task.title}`}
-						className="w-full resize-none rounded-brand bg-transparent px-xs -mx-xs text-sm text-text-muted placeholder:text-text-muted focus:bg-bg focus:outline-none"
+						className={`w-full resize-none rounded-brand bg-transparent px-xs -mx-xs text-sm text-text-muted placeholder:text-text-muted focus:bg-bg focus:outline-none ${isDescriptionExpanded || !isDescriptionClampable ? '' : 'overflow-hidden'}`}
 					/>
+					{isDescriptionClampable && (
+						<button
+							type="button"
+							onClick={() => setIsDescriptionExpanded((expanded) => !expanded)}
+							onMouseDown={(e) => e.stopPropagation()}
+							className="self-start text-[10px] uppercase tracking-wide text-text-muted hover:text-accent transition-colors duration-200"
+						>
+							{isDescriptionExpanded ? 'Show less' : 'Show more'}
+						</button>
+					)}
 				</div>
 
 				{/* Questions: a labelled section of the record, not a pile of separate boxes. */}
 				<div className="border-t border-border-lit px-sm">
-					<div className="pt-sm pb-xs text-[10px] uppercase tracking-wide text-text-muted">
-						Questions · {questions.length}
+					<div className="flex items-center justify-between gap-xs pt-sm pb-xs">
+						<span className="text-[10px] uppercase tracking-wide text-text-muted">
+							Questions · {questions.length}
+						</span>
+						{areQuestionsClampable && (
+							<button
+								type="button"
+								onClick={() => setAreQuestionsExpanded((expanded) => !expanded)}
+								onMouseDown={(e) => e.stopPropagation()}
+								aria-label={areQuestionsExpanded ? 'Show fewer questions' : 'Show all questions'}
+								className="text-text-muted hover:text-accent transition-colors duration-200"
+							>
+								<CaretDown
+									size={10}
+									weight="bold"
+									className={`transition-transform duration-200 ${areQuestionsExpanded ? 'rotate-180' : ''}`}
+								/>
+							</button>
+						)}
 					</div>
 
 					{questions.length > 0 && (
 						<ul className="flex flex-col">
-							{questions.map((question) => (
+							{visibleQuestions.map((question) => (
 								<li
 									key={question.id}
 									className="flex items-center justify-between gap-xs border-t border-border py-xs text-xs first:border-t-0"

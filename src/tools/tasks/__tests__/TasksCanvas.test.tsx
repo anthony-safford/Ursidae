@@ -356,6 +356,30 @@ describe('TasksCanvas', () => {
 		expect(onFieldChange).toHaveBeenCalledWith(1, { description: null });
 	});
 
+	it('does not show a show-more toggle for a short description', () => {
+		renderCanvas();
+
+		expect(screen.queryByText('Show more')).not.toBeInTheDocument();
+	});
+
+	it('clamps a long description behind a show-more toggle and expands it on click', () => {
+		const longDescription = 'a'.repeat(150);
+		renderCanvas({ tasks: [{ ...baseTask, description: longDescription }] });
+
+		const descriptionInput = screen.getByLabelText('Description for Write the report');
+		expect(descriptionInput).toHaveAttribute('rows', '2');
+
+		const toggle = screen.getByText('Show more');
+		fireEvent.click(toggle);
+
+		expect(descriptionInput).toHaveAttribute('rows', '6');
+		expect(screen.getByText('Show less')).toBeInTheDocument();
+
+		fireEvent.click(screen.getByText('Show less'));
+
+		expect(descriptionInput).toHaveAttribute('rows', '2');
+	});
+
 	it('commits a status change via onFieldChange immediately on select', () => {
 		const onFieldChange = vi.fn();
 		renderCanvas({ onFieldChange });
@@ -401,6 +425,26 @@ describe('TasksCanvas', () => {
 		fireEvent.click(screen.getByTestId('delete-question-1'));
 
 		expect(onDeleteQuestion).toHaveBeenCalledWith(1);
+	});
+
+	it('does not show a questions expand toggle at or under the visible-count threshold', () => {
+		renderCanvas({ questions: [question] });
+
+		expect(screen.queryByLabelText('Show all questions')).not.toBeInTheDocument();
+	});
+
+	it('collapses questions past the visible-count threshold behind an expand toggle', () => {
+		const questions = [1, 2, 3, 4].map((id) => ({ ...question, id, text: `Question ${id}` }));
+		renderCanvas({ questions });
+
+		expect(screen.getByText('Question 1')).toBeInTheDocument();
+		expect(screen.getByText('Question 3')).toBeInTheDocument();
+		expect(screen.queryByText('Question 4')).not.toBeInTheDocument();
+
+		fireEvent.click(screen.getByLabelText('Show all questions'));
+
+		expect(screen.getByText('Question 4')).toBeInTheDocument();
+		expect(screen.getByLabelText('Show fewer questions')).toBeInTheDocument();
 	});
 
 	it('calls onAddQuestion with the task id and text when a new question is submitted', () => {

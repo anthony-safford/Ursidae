@@ -42,6 +42,8 @@
 
 @layer base {
 	body {
+		color-scheme: dark; /* app is dark-only — keeps native popups (select, date picker, scrollbars)
+			in their dark UA styling instead of defaulting to light */
 		background-color: var(--color-bg);
 		color: var(--color-text);
 		font-family: var(--font-body);
